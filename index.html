@@ -158,6 +158,15 @@
     .cam-btn.active { background: var(--surface2); color: var(--text); border-color: var(--border2); }
     .stream-notice { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: center; line-height: 1.6; }
 
+    /* Stream quality sliders */
+    .quality-sliders { margin-bottom: 1rem; }
+    .quality-row { display: flex; align-items: center; gap: 10px; margin-bottom: 0.6rem; }
+    .quality-label { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 68px; flex-shrink: 0; text-align: right; letter-spacing: 0.05em; text-transform: uppercase; }
+    .quality-val { font-family: var(--mono); font-size: 11px; color: var(--accent); width: 72px; flex-shrink: 0; text-align: left; }
+    input[type="range"] { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; background: var(--surface2); border-radius: 999px; outline: none; border: 1px solid var(--border); cursor: pointer; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); cursor: pointer; }
+    input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); cursor: pointer; }
+
     /* Media */
     .media-notice { background: var(--warn-dim); border: 1px solid var(--warn-border); border-radius: var(--r-sm); padding: 0.75rem 1rem; font-size: 12px; font-family: var(--mono); color: var(--warn); }
     .upload-area { border: 1.5px dashed var(--border2); border-radius: var(--r-sm); padding: 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
@@ -335,6 +344,27 @@
         <button class="cam-btn active" id="cam-rear" onclick="selectCamera('rear')">&#128247; Rear</button>
         <button class="cam-btn" id="cam-front" onclick="selectCamera('front')">&#129318; Front</button>
       </div>
+
+      <!-- Quality sliders — broadcaster only, hidden when live -->
+      <div class="quality-sliders" id="quality-sliders">
+        <p class="section-label" style="margin-bottom:0.6rem">Stream quality</p>
+        <div class="quality-row">
+          <span class="quality-label">Resolution</span>
+          <input type="range" id="sl-res" min="0" max="3" step="1" value="1" oninput="updateSliders()">
+          <span class="quality-val" id="lbl-res">480×360</span>
+        </div>
+        <div class="quality-row">
+          <span class="quality-label">Frame rate</span>
+          <input type="range" id="sl-fps" min="0" max="4" step="1" value="1" oninput="updateSliders()">
+          <span class="quality-val" id="lbl-fps">15 fps</span>
+        </div>
+        <div class="quality-row">
+          <span class="quality-label">Bitrate</span>
+          <input type="range" id="sl-bps" min="0" max="4" step="1" value="2" oninput="updateSliders()">
+          <span class="quality-val" id="lbl-bps">400 kbps</span>
+        </div>
+      </div>
+
       <div class="stream-btn-row">
         <button class="stream-btn go-live" id="btn-golive" onclick="startBroadcast()">&#9679; Go Live</button>
         <button class="stream-btn watch"   id="btn-watch"  onclick="startWatch()">&#9654; Watch</button>
@@ -406,6 +436,7 @@
     </div>
     <div class="card">
       <p class="section-label">Changelog</p>
+      <div class="changelog-entry"><div class="changelog-version">v1.18</div><div class="changelog-desc">Added stream quality sliders (resolution, frame rate, bitrate) shown before going live, saved to localStorage. Default resolution raised to 480×360. Bitrate, framerate and SDP cap all driven by slider values. window._debugPC exposed for console diagnostics.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.17</div><div class="changelog-desc">Added TURN server (Open Relay) for NAT traversal. Adaptive bitrate adjusts based on packet loss and RTT. Forced keyframe every 2 seconds for faster recovery. ICE restart on disconnection before full teardown. Auto-reconnect viewer up to 5 attempts with backoff. Connection quality indicator (Good/Fair/Poor) in stream status bar.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.16</div><div class="changelog-desc">Rebuilt stream signalling as pull-based: viewer announces ready, broadcaster responds with offer. Broadcaster stays live indefinitely, viewers join any time. Opening Stream tab auto-joins if stream active. Bitrate back to 200kbps for stability. Removed order dependency entirely.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.15</div><div class="changelog-desc">Raised stream bitrate to 400kbps. Set degradationPreference to maintain-framerate for smoother motion. Added Mute and Hide Camera buttons for broadcaster. Check for Update now returns to Settings tab after reload.</div></div>
@@ -429,7 +460,7 @@
       <div class="changelog-entry"><div class="changelog-version">v1.02</div><div class="changelog-desc">First PWA on Netlify with Supabase.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.01</div><div class="changelog-desc">Shared multi-user version with persistent storage.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.00</div><div class="changelog-desc">Initial logging app with Amount, Wet, BM, Pumped and timestamp.</div></div>
-      <div class="version-display">The MurDough Matrix v1.17</div>
+      <div class="version-display">The MurDough Matrix v1.18</div>
     </div>
   </div>
 
@@ -878,13 +909,63 @@ function selectCamera(facing) {
   getEl('cam-front').classList.toggle('active', facing==='front');
 }
 
+// ── Stream quality settings ───────────────────────────────────
+const RES_OPTIONS = [
+  { label: '320×240',  w: 320,  h: 240  },
+  { label: '480×360',  w: 480,  h: 360  },
+  { label: '640×480',  w: 640,  h: 480  },
+  { label: '1280×720', w: 1280, h: 720  },
+];
+const FPS_OPTIONS = [8, 15, 24, 30, 60];
+const BPS_OPTIONS = [
+  { label: '100 kbps', bps: 100000  },
+  { label: '200 kbps', bps: 200000  },
+  { label: '400 kbps', bps: 400000  },
+  { label: '800 kbps', bps: 800000  },
+  { label: '1.5 Mbps', bps: 1500000 },
+];
+
+function getQualitySettings() {
+  const resIdx = parseInt(localStorage.getItem('mmx_sl_res') ?? '1');
+  const fpsIdx = parseInt(localStorage.getItem('mmx_sl_fps') ?? '1');
+  const bpsIdx = parseInt(localStorage.getItem('mmx_sl_bps') ?? '2');
+  return {
+    res: RES_OPTIONS[Math.min(resIdx, RES_OPTIONS.length-1)],
+    fps: FPS_OPTIONS[Math.min(fpsIdx, FPS_OPTIONS.length-1)],
+    bps: BPS_OPTIONS[Math.min(bpsIdx, BPS_OPTIONS.length-1)],
+  };
+}
+
+function updateSliders() {
+  const resIdx = parseInt(getEl('sl-res').value);
+  const fpsIdx = parseInt(getEl('sl-fps').value);
+  const bpsIdx = parseInt(getEl('sl-bps').value);
+  getEl('lbl-res').textContent = RES_OPTIONS[resIdx].label;
+  getEl('lbl-fps').textContent = FPS_OPTIONS[fpsIdx] + ' fps';
+  getEl('lbl-bps').textContent = BPS_OPTIONS[bpsIdx].label;
+  localStorage.setItem('mmx_sl_res', resIdx);
+  localStorage.setItem('mmx_sl_fps', fpsIdx);
+  localStorage.setItem('mmx_sl_bps', bpsIdx);
+}
+
+function initSliders() {
+  const resIdx = parseInt(localStorage.getItem('mmx_sl_res') ?? '1');
+  const fpsIdx = parseInt(localStorage.getItem('mmx_sl_fps') ?? '1');
+  const bpsIdx = parseInt(localStorage.getItem('mmx_sl_bps') ?? '2');
+  getEl('sl-res').value = resIdx;
+  getEl('sl-fps').value = fpsIdx;
+  getEl('sl-bps').value = bpsIdx;
+  updateSliders();
+}
+
 async function getLocalStream() {
+  const { res, fps } = getQualitySettings();
   return await navigator.mediaDevices.getUserMedia({
     video: {
       facingMode: selectedCamera==='rear' ? 'environment' : 'user',
-      width:     { ideal: 320, max: 480 },
-      height:    { ideal: 240, max: 360 },
-      frameRate: { ideal: 12, max: 15 }
+      width:     { ideal: res.w, max: res.w },
+      height:    { ideal: res.h, max: res.h },
+      frameRate: { ideal: fps, max: fps }
     },
     audio: {
       echoCancellation: true,
@@ -912,12 +993,16 @@ function constrainSDP(sdp) {
       }
     );
   }
-  result = result.replace(/(m=video [^\r\n]+\r\n)/g, '$1b=AS:200\r\n');
+  // Use slider bitrate for SDP cap (convert bps to kbps)
+  const sdpKbps = Math.round((getQualitySettings().bps.bps) / 1000);
+  result = result.replace(/(m=video [^\r\n]+\r\n)/g, `$1b=AS:${sdpKbps}\r\n`);
   return result;
 }
 
 // Apply initial bitrate limit via RTCRtpSender
 async function applyBitrateLimit(pc) {
+  const { bps, fps } = getQualitySettings();
+  currentMaxBitrate = bps.bps;
   const senders = pc.getSenders();
   for (const sender of senders) {
     if (!sender.track) continue;
@@ -925,8 +1010,8 @@ async function applyBitrateLimit(pc) {
       const params = sender.getParameters();
       if (!params.encodings || !params.encodings.length) params.encodings = [{}];
       if (sender.track.kind === 'video') {
-        params.encodings[0].maxBitrate   = 200000;
-        params.encodings[0].maxFramerate = 15;
+        params.encodings[0].maxBitrate   = bps.bps;
+        params.encodings[0].maxFramerate = fps;
       }
       await sender.setParameters(params);
     } catch (err) {}
@@ -974,9 +1059,10 @@ function startAdaptiveBitrate(pc) {
         // Degrade — reduce by 25%
         newBitrate = Math.max(50000, Math.floor(currentMaxBitrate * 0.75));
         updateQualityIndicator('poor');
-      } else if (lossRate < 0.01 && rtt < 0.15 && currentMaxBitrate < 200000) {
-        // Improve — increase by 10%
-        newBitrate = Math.min(200000, Math.floor(currentMaxBitrate * 1.1));
+      } else if (lossRate < 0.01 && rtt < 0.15) {
+        // Improve — increase by 10% up to slider ceiling
+        const ceiling = getQualitySettings().bps.bps;
+        newBitrate = Math.min(ceiling, Math.floor(currentMaxBitrate * 1.1));
         updateQualityIndicator('good');
       } else {
         updateQualityIndicator(lossRate < 0.03 ? 'good' : 'fair');
@@ -1161,6 +1247,8 @@ async function createPeerConnection(broadcaster) {
       localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
     }
   }
+  // Expose for console diagnostics
+  window._debugPC = peerConnection;
 }
 
 async function sendOffer() {
@@ -1310,19 +1398,22 @@ function cleanupStream() {
 }
 
 function setStreamUI(mode) {
-  const golive     = getEl('btn-golive');
-  const watch      = getEl('btn-watch');
-  const stopRow    = getEl('stop-row');
-  const camRow     = document.querySelector('.camera-select-row');
-  const bcControls = getEl('broadcaster-controls');
+  const golive      = getEl('btn-golive');
+  const watch       = getEl('btn-watch');
+  const stopRow     = getEl('stop-row');
+  const camRow      = document.querySelector('.camera-select-row');
+  const bcControls  = getEl('broadcaster-controls');
+  const qualSliders = getEl('quality-sliders');
   if (mode === 'idle') {
     golive.disabled = false; watch.disabled = false;
     stopRow.style.display = 'none'; camRow.style.display = 'flex';
-    if (bcControls) bcControls.style.display = 'flex';
+    if (bcControls)  bcControls.style.display  = 'flex';
+    if (qualSliders) qualSliders.style.display  = 'block';
   } else {
     golive.disabled = true; watch.disabled = true;
     stopRow.style.display = 'block'; camRow.style.display = 'none';
-    if (bcControls) bcControls.style.display = mode === 'broadcasting' ? 'flex' : 'none';
+    if (bcControls)  bcControls.style.display  = mode === 'broadcasting' ? 'flex' : 'none';
+    if (qualSliders) qualSliders.style.display  = 'none';
   }
 }
 
@@ -1524,6 +1615,7 @@ function init() {
   loadEntries();
   initSupabaseClient();
   pollStreamPresence();
+  initSliders();
   // Return to saved tab after update reload
   const returnTab = localStorage.getItem('mmx_return_tab');
   if (returnTab) {
