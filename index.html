@@ -158,6 +158,33 @@
     .cam-btn.active { background: var(--surface2); color: var(--text); border-color: var(--border2); }
     .stream-notice { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: center; line-height: 1.6; }
 
+    /* Two-way call video layout */
+    .call-video-wrap { position: relative; background: #000; border-radius: var(--r-sm); overflow: hidden; aspect-ratio: 16/9; }
+    .call-video-wrap video#remote-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .call-video-wrap video#local-video  { position: absolute; bottom: 10px; right: 10px; width: 28%; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; border: 2px solid rgba(255,255,255,0.2); background: #111; z-index: 2; }
+    .call-video-wrap .no-stream { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+    /* Chat */
+    .chat-wrap { display: flex; flex-direction: column; gap: 0; }
+    .chat-messages { min-height: 120px; max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-bottom: 0.5rem; }
+    .chat-msg { max-width: 80%; padding: 7px 11px; border-radius: 12px; font-size: 13px; line-height: 1.4; word-break: break-word; }
+    .chat-msg.sent     { align-self: flex-end; background: var(--accent-dim); border: 1px solid var(--accent-border); color: var(--text); border-bottom-right-radius: 3px; }
+    .chat-msg.received { align-self: flex-start; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 3px; }
+    .chat-msg .msg-time { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 3px; }
+    .chat-empty { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: center; padding: 1rem 0; }
+    .chat-input-row { display: flex; gap: 8px; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+    .chat-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text); font-family: var(--sans); font-size: 14px; padding: 9px 12px; outline: none; transition: border-color 0.15s; }
+    .chat-input:focus { border-color: var(--border2); }
+    .chat-input::placeholder { color: var(--muted); }
+    .chat-send { background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: var(--r-sm); color: var(--accent); font-family: var(--mono); font-size: 12px; padding: 9px 14px; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+    .chat-send:hover { background: rgba(168,240,198,0.22); }
+    .chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Busy signal */
+    .busy-screen { text-align: center; padding: 2rem 1rem; }
+    .busy-screen .busy-icon { font-size: 36px; margin-bottom: 0.75rem; }
+    .busy-screen .busy-text { font-family: var(--mono); font-size: 13px; color: var(--muted); line-height: 1.6; }
+
     /* Stream quality sliders */
     .quality-sliders { margin-bottom: 1rem; }
     .quality-row { display: flex; align-items: center; gap: 10px; margin-bottom: 0.6rem; }
@@ -335,17 +362,17 @@
   <div class="panel" id="panel-stream">
     <div class="stream-status-bar">
       <span class="stream-dot" id="stream-dot"></span>
-      <span id="stream-status-text">No active stream</span>
+      <span id="stream-status-text">No active call</span>
       <span id="stream-quality" style="margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--muted)"></span>
     </div>
-    <div class="card">
+
+    <!-- Idle / pre-call controls -->
+    <div class="card" id="stream-idle-card">
       <p class="section-label" style="margin-bottom:0.75rem">Camera</p>
       <div class="camera-select-row">
         <button class="cam-btn active" id="cam-rear" onclick="selectCamera('rear')">&#128247; Rear</button>
         <button class="cam-btn" id="cam-front" onclick="selectCamera('front')">&#129318; Front</button>
       </div>
-
-      <!-- Quality sliders — broadcaster only, hidden when live -->
       <div class="quality-sliders" id="quality-sliders">
         <p class="section-label" style="margin-bottom:0.6rem">Stream quality</p>
         <div class="quality-row">
@@ -364,27 +391,47 @@
           <span class="quality-val" id="lbl-bps">400 kbps</span>
         </div>
       </div>
+      <button class="stream-btn go-live" style="width:100%;margin-top:0.5rem" id="btn-startcall" onclick="startCall()">&#9679; Start Call</button>
+    </div>
 
-      <div class="stream-btn-row">
-        <button class="stream-btn go-live" id="btn-golive" onclick="startBroadcast()">&#9679; Go Live</button>
-        <button class="stream-btn watch"   id="btn-watch"  onclick="startWatch()">&#9654; Watch</button>
+    <!-- Busy signal -->
+    <div class="card" id="stream-busy-card" style="display:none">
+      <div class="busy-screen">
+        <div class="busy-icon">📵</div>
+        <div class="busy-text">A call is already in progress.<br>Please try again later.</div>
       </div>
-      <div style="margin-top:0.75rem;display:none" id="stop-row">
-        <div style="display:flex;gap:8px;margin-bottom:8px" id="broadcaster-controls">
-          <button class="stream-btn stop" style="flex:1" id="btn-mute" onclick="toggleMute()">&#128263; Mute</button>
-          <button class="stream-btn stop" style="flex:1" id="btn-cam" onclick="toggleCamera()">&#128247; Hide Cam</button>
+    </div>
+
+    <!-- Active call -->
+    <div class="card" style="padding:0;overflow:hidden;display:none" id="stream-call-card">
+      <div class="call-video-wrap">
+        <video id="remote-video" autoplay playsinline></video>
+        <video id="local-video"  autoplay muted playsinline></video>
+        <div class="no-stream" id="no-stream-msg">Connecting…</div>
+      </div>
+    </div>
+
+    <!-- Call controls -->
+    <div class="card" style="display:none" id="stream-controls-card">
+      <div style="display:flex;gap:8px;margin-bottom:0.75rem">
+        <button class="stream-btn stop" style="flex:1" id="btn-mute" onclick="toggleMute()">&#128263; Mute</button>
+        <button class="stream-btn stop" style="flex:1" id="btn-cam"  onclick="toggleCamera()">&#128247; Hide Cam</button>
+        <button class="stream-btn stop" style="flex:1;background:var(--danger-dim);border-color:var(--danger-border);color:var(--danger)" onclick="stopStream()">&#9632; End Call</button>
+      </div>
+      <!-- Chat -->
+      <div class="chat-wrap">
+        <p class="section-label">Chat</p>
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-empty" id="chat-empty">No messages yet</div>
         </div>
-        <button class="stream-btn stop" style="width:100%" onclick="stopStream()">&#9632; Stop</button>
+        <div class="chat-input-row">
+          <input type="text" class="chat-input" id="chat-input" placeholder="Type a message…" onkeydown="chatKeydown(event)" maxlength="500">
+          <button class="chat-send" id="chat-send" onclick="sendChatMessage()" disabled>Send</button>
+        </div>
       </div>
     </div>
-    <div class="card" style="padding:0;overflow:hidden">
-      <div class="stream-video-wrap">
-        <video id="local-video"  autoplay muted    playsinline style="display:none"></video>
-        <video id="remote-video" autoplay playsinline style="display:none"></video>
-        <div class="no-stream" id="no-stream-msg">No stream active</div>
-      </div>
-    </div>
-    <p class="stream-notice">Both users must have the Stream tab open for the connection to establish. Works best on the same Wi-Fi network.</p>
+
+    <p class="stream-notice" id="stream-notice-text">Open this tab on both devices to start a call.</p>
   </div>
 
   <!-- ══ MEDIA TAB ══ -->
@@ -436,6 +483,7 @@
     </div>
     <div class="card">
       <p class="section-label">Changelog</p>
+      <div class="changelog-entry"><div class="changelog-version">v1.19</div><div class="changelog-desc">Rebuilt Stream tab as two-way video call with session chat. Both users send and receive video and audio. Single Start Call button — second user sees Join Call. Busy signal for third users. Data channel chat appears during call, cleared on end. Picture-in-picture local video. End Call button.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.18</div><div class="changelog-desc">Added stream quality sliders (resolution, frame rate, bitrate) shown before going live, saved to localStorage. Default resolution raised to 480×360. Bitrate, framerate and SDP cap all driven by slider values. window._debugPC exposed for console diagnostics.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.17</div><div class="changelog-desc">Added TURN server (Open Relay) for NAT traversal. Adaptive bitrate adjusts based on packet loss and RTT. Forced keyframe every 2 seconds for faster recovery. ICE restart on disconnection before full teardown. Auto-reconnect viewer up to 5 attempts with backoff. Connection quality indicator (Good/Fair/Poor) in stream status bar.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.16</div><div class="changelog-desc">Rebuilt stream signalling as pull-based: viewer announces ready, broadcaster responds with offer. Broadcaster stays live indefinitely, viewers join any time. Opening Stream tab auto-joins if stream active. Bitrate back to 200kbps for stability. Removed order dependency entirely.</div></div>
@@ -460,7 +508,7 @@
       <div class="changelog-entry"><div class="changelog-version">v1.02</div><div class="changelog-desc">First PWA on Netlify with Supabase.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.01</div><div class="changelog-desc">Shared multi-user version with persistent storage.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.00</div><div class="changelog-desc">Initial logging app with Amount, Wet, BM, Pumped and timestamp.</div></div>
-      <div class="version-display">The MurDough Matrix v1.18</div>
+      <div class="version-display">The MurDough Matrix v1.19</div>
     </div>
   </div>
 
@@ -615,7 +663,7 @@ function switchTab(name) {
   if (name==='weather') loadWeather();
   if (name==='bp')      loadBP();
   if (name==='media')   loadMedia();
-  if (name==='stream')  autoJoinAsViewer();
+  if (name==='stream')  onStreamTabOpen();
 }
 
 // ── Supabase REST ────────────────────────────────────────────
@@ -858,49 +906,44 @@ async function checkStreamActive() {
 }
 
 async function pollStreamPresence() {
-  if (isBroadcasting || isWatching) return;
+  if (inCall) return;
   const active = await checkStreamActive();
   getEl('tab-stream').classList.toggle('live-dot', active);
-  // Auto-show stream to viewer if they open the tab and stream is active
-  if (active && getEl('panel-stream').classList.contains('active')) {
-    autoJoinAsViewer();
+  if (active && getEl('panel-stream').classList.contains('active') && !inCall) {
+    showBusyOrJoin(active);
   }
 }
 
-// ── WebRTC Streaming ─────────────────────────────────────────
+async function onStreamTabOpen() {
+  if (inCall) return;
+  const active = await checkStreamActive();
+  if (active) showBusyOrJoin(true);
+  else showIdleUI();
+}
+
+// ── WebRTC Two-way Call ───────────────────────────────────────
 let offerRepeatTimer  = null;
 let lastOffer         = null;
 let pendingCandidates = [];
 let remoteDescSet     = false;
 let negotiating       = false;
+let inCall            = false;
+let isInitiator       = false;
 let isMuted           = false;
 let isCamHidden       = false;
+let dataChannel       = null;
+let chatMessages      = [];
 
 const RTC_CONFIG = { iceServers: [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  // Open Relay free TURN server for NAT traversal
-  {
-    urls: 'turn:openrelay.metered.ca:80',
-    username: 'openrelayproject',
-    credential: 'openrelayproject'
-  },
-  {
-    urls: 'turn:openrelay.metered.ca:443',
-    username: 'openrelayproject',
-    credential: 'openrelayproject'
-  },
-  {
-    urls: 'turns:openrelay.metered.ca:443',
-    username: 'openrelayproject',
-    credential: 'openrelayproject'
-  }
+  { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turns:openrelay.metered.ca:443',username: 'openrelayproject', credential: 'openrelayproject' }
 ]};
 
 function initSupabaseClient() {
-  if (!supabaseClient) {
-    supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
-  }
+  if (!supabaseClient) supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
 }
 
 function selectCamera(facing) {
@@ -909,512 +952,448 @@ function selectCamera(facing) {
   getEl('cam-front').classList.toggle('active', facing==='front');
 }
 
-// ── Stream quality settings ───────────────────────────────────
+async function getLocalStream() {
+  const { res, fps } = getQualitySettings();
+  return await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: selectedCamera==='rear'?'environment':'user', width:{ideal:res.w,max:res.w}, height:{ideal:res.h,max:res.h}, frameRate:{ideal:fps,max:fps} },
+    audio: { echoCancellation:true, noiseSuppression:true, sampleRate:16000 }
+  });
+}
+
+// ── Quality settings ──────────────────────────────────────────
 const RES_OPTIONS = [
-  { label: '320×240',  w: 320,  h: 240  },
-  { label: '480×360',  w: 480,  h: 360  },
-  { label: '640×480',  w: 640,  h: 480  },
-  { label: '1280×720', w: 1280, h: 720  },
+  { label:'320×240',  w:320,  h:240  },
+  { label:'480×360',  w:480,  h:360  },
+  { label:'640×480',  w:640,  h:480  },
+  { label:'1280×720', w:1280, h:720  },
 ];
 const FPS_OPTIONS = [8, 15, 24, 30, 60];
 const BPS_OPTIONS = [
-  { label: '100 kbps', bps: 100000  },
-  { label: '200 kbps', bps: 200000  },
-  { label: '400 kbps', bps: 400000  },
-  { label: '800 kbps', bps: 800000  },
-  { label: '1.5 Mbps', bps: 1500000 },
+  { label:'100 kbps', bps:100000  },
+  { label:'200 kbps', bps:200000  },
+  { label:'400 kbps', bps:400000  },
+  { label:'800 kbps', bps:800000  },
+  { label:'1.5 Mbps', bps:1500000 },
 ];
 
 function getQualitySettings() {
   const resIdx = parseInt(localStorage.getItem('mmx_sl_res') ?? '1');
   const fpsIdx = parseInt(localStorage.getItem('mmx_sl_fps') ?? '1');
   const bpsIdx = parseInt(localStorage.getItem('mmx_sl_bps') ?? '2');
-  return {
-    res: RES_OPTIONS[Math.min(resIdx, RES_OPTIONS.length-1)],
-    fps: FPS_OPTIONS[Math.min(fpsIdx, FPS_OPTIONS.length-1)],
-    bps: BPS_OPTIONS[Math.min(bpsIdx, BPS_OPTIONS.length-1)],
-  };
+  return { res:RES_OPTIONS[Math.min(resIdx,3)], fps:FPS_OPTIONS[Math.min(fpsIdx,4)], bps:BPS_OPTIONS[Math.min(bpsIdx,4)] };
 }
 
 function updateSliders() {
-  const resIdx = parseInt(getEl('sl-res').value);
-  const fpsIdx = parseInt(getEl('sl-fps').value);
-  const bpsIdx = parseInt(getEl('sl-bps').value);
-  getEl('lbl-res').textContent = RES_OPTIONS[resIdx].label;
-  getEl('lbl-fps').textContent = FPS_OPTIONS[fpsIdx] + ' fps';
-  getEl('lbl-bps').textContent = BPS_OPTIONS[bpsIdx].label;
-  localStorage.setItem('mmx_sl_res', resIdx);
-  localStorage.setItem('mmx_sl_fps', fpsIdx);
-  localStorage.setItem('mmx_sl_bps', bpsIdx);
+  const ri=parseInt(getEl('sl-res').value), fi=parseInt(getEl('sl-fps').value), bi=parseInt(getEl('sl-bps').value);
+  getEl('lbl-res').textContent = RES_OPTIONS[ri].label;
+  getEl('lbl-fps').textContent = FPS_OPTIONS[fi]+' fps';
+  getEl('lbl-bps').textContent = BPS_OPTIONS[bi].label;
+  localStorage.setItem('mmx_sl_res',ri); localStorage.setItem('mmx_sl_fps',fi); localStorage.setItem('mmx_sl_bps',bi);
 }
 
 function initSliders() {
-  const resIdx = parseInt(localStorage.getItem('mmx_sl_res') ?? '1');
-  const fpsIdx = parseInt(localStorage.getItem('mmx_sl_fps') ?? '1');
-  const bpsIdx = parseInt(localStorage.getItem('mmx_sl_bps') ?? '2');
-  getEl('sl-res').value = resIdx;
-  getEl('sl-fps').value = fpsIdx;
-  getEl('sl-bps').value = bpsIdx;
+  const ri=parseInt(localStorage.getItem('mmx_sl_res')??'1'), fi=parseInt(localStorage.getItem('mmx_sl_fps')??'1'), bi=parseInt(localStorage.getItem('mmx_sl_bps')??'2');
+  getEl('sl-res').value=ri; getEl('sl-fps').value=fi; getEl('sl-bps').value=bi;
   updateSliders();
 }
 
-async function getLocalStream() {
-  const { res, fps } = getQualitySettings();
-  return await navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: selectedCamera==='rear' ? 'environment' : 'user',
-      width:     { ideal: res.w, max: res.w },
-      height:    { ideal: res.h, max: res.h },
-      frameRate: { ideal: fps, max: fps }
-    },
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      sampleRate: 16000
-    }
-  });
-}
-
-// Prefer VP8 and cap bitrate in SDP
+// ── SDP helpers ───────────────────────────────────────────────
 function constrainSDP(sdp) {
-  const lines = sdp.split('\r\n');
-  let vp8Payload = null;
-  for (const line of lines) {
-    const m = line.match(/a=rtpmap:(\d+) VP8\/90000/);
-    if (m) { vp8Payload = m[1]; break; }
-  }
+  const lines = sdp.split('\r\n'); let vp8 = null;
+  for (const l of lines) { const m=l.match(/a=rtpmap:(\d+) VP8\/90000/); if(m){vp8=m[1];break;} }
   let result = sdp;
-  if (vp8Payload) {
-    result = result.replace(
-      /m=video (\d+) [A-Z/]+ ([\d ]+)/,
-      (match, port, payloads) => {
-        const others = payloads.split(' ').filter(p => p !== vp8Payload);
-        return `m=video ${port} UDP/TLS/RTP/SAVPF ${vp8Payload} ${others.join(' ')}`;
-      }
-    );
+  if (vp8) {
+    result = result.replace(/m=video (\d+) [A-Z/]+ ([\d ]+)/, (match,port,pays) => {
+      const others = pays.split(' ').filter(p=>p!==vp8);
+      return `m=video ${port} UDP/TLS/RTP/SAVPF ${vp8} ${others.join(' ')}`;
+    });
   }
-  // Use slider bitrate for SDP cap (convert bps to kbps)
-  const sdpKbps = Math.round((getQualitySettings().bps.bps) / 1000);
-  result = result.replace(/(m=video [^\r\n]+\r\n)/g, `$1b=AS:${sdpKbps}\r\n`);
+  const kbps = Math.round(getQualitySettings().bps.bps/1000);
+  result = result.replace(/(m=video [^\r\n]+\r\n)/g, `$1b=AS:${kbps}\r\n`);
   return result;
 }
 
-// Apply initial bitrate limit via RTCRtpSender
 async function applyBitrateLimit(pc) {
   const { bps, fps } = getQualitySettings();
   currentMaxBitrate = bps.bps;
-  const senders = pc.getSenders();
-  for (const sender of senders) {
+  for (const sender of pc.getSenders()) {
     if (!sender.track) continue;
     try {
       const params = sender.getParameters();
-      if (!params.encodings || !params.encodings.length) params.encodings = [{}];
-      if (sender.track.kind === 'video') {
-        params.encodings[0].maxBitrate   = bps.bps;
-        params.encodings[0].maxFramerate = fps;
-      }
+      if (!params.encodings?.length) params.encodings = [{}];
+      if (sender.track.kind==='video') { params.encodings[0].maxBitrate=bps.bps; params.encodings[0].maxFramerate=fps; }
       await sender.setParameters(params);
     } catch (err) {}
   }
-  // Start adaptive bitrate monitoring
   startAdaptiveBitrate(pc);
-  // Start forced keyframe interval
   startKeyframeInterval(pc);
 }
 
 // ── Adaptive bitrate ──────────────────────────────────────────
-let adaptiveTimer   = null;
-let keyframeTimer   = null;
-let lastPacketsLost = 0;
-let lastPacketsSent = 0;
-let currentMaxBitrate = 200000;
+let adaptiveTimer=null, keyframeTimer=null, lastPacketsLost=0, lastPacketsSent=0, currentMaxBitrate=200000;
 
 function startAdaptiveBitrate(pc) {
   if (adaptiveTimer) clearInterval(adaptiveTimer);
   adaptiveTimer = setInterval(async () => {
-    if (!pc || pc.connectionState !== 'connected') return;
+    if (!pc||pc.connectionState!=='connected') return;
     try {
-      const stats = await pc.getStats();
-      let packetsLost = 0, packetsSent = 0, rtt = 0;
-      stats.forEach(report => {
-        if (report.type === 'outbound-rtp' && report.kind === 'video') {
-          packetsSent = report.packetsSent || 0;
-        }
-        if (report.type === 'remote-inbound-rtp' && report.kind === 'video') {
-          packetsLost = report.packetsLost || 0;
-          rtt         = report.roundTripTime || 0;
-        }
+      const stats=await pc.getStats(); let lost=0,sent=0,rtt=0;
+      stats.forEach(r => {
+        if (r.type==='outbound-rtp'&&r.kind==='video') sent=r.packetsSent||0;
+        if (r.type==='remote-inbound-rtp'&&r.kind==='video') { lost=r.packetsLost||0; rtt=r.roundTripTime||0; }
       });
-
-      const lostDelta = packetsLost - lastPacketsLost;
-      const sentDelta = packetsSent - lastPacketsSent;
-      lastPacketsLost = packetsLost;
-      lastPacketsSent = packetsSent;
-
-      const lossRate = sentDelta > 0 ? lostDelta / sentDelta : 0;
-
-      // Adjust bitrate based on loss rate and RTT
-      let newBitrate = currentMaxBitrate;
-      if (lossRate > 0.05 || rtt > 0.3) {
-        // Degrade — reduce by 25%
-        newBitrate = Math.max(50000, Math.floor(currentMaxBitrate * 0.75));
-        updateQualityIndicator('poor');
-      } else if (lossRate < 0.01 && rtt < 0.15) {
-        // Improve — increase by 10% up to slider ceiling
-        const ceiling = getQualitySettings().bps.bps;
-        newBitrate = Math.min(ceiling, Math.floor(currentMaxBitrate * 1.1));
-        updateQualityIndicator('good');
-      } else {
-        updateQualityIndicator(lossRate < 0.03 ? 'good' : 'fair');
-      }
-
-      if (newBitrate !== currentMaxBitrate) {
-        currentMaxBitrate = newBitrate;
-        const senders = pc.getSenders();
-        for (const sender of senders) {
-          if (!sender.track || sender.track.kind !== 'video') continue;
-          try {
-            const params = sender.getParameters();
-            if (!params.encodings || !params.encodings.length) params.encodings = [{}];
-            params.encodings[0].maxBitrate = newBitrate;
-            await sender.setParameters(params);
-          } catch (e) {}
+      const ld=lost-lastPacketsLost, sd=sent-lastPacketsSent;
+      lastPacketsLost=lost; lastPacketsSent=sent;
+      const lossRate=sd>0?ld/sd:0;
+      let nb=currentMaxBitrate;
+      if (lossRate>0.05||rtt>0.3) { nb=Math.max(50000,Math.floor(currentMaxBitrate*0.75)); updateQualityIndicator('poor'); }
+      else if (lossRate<0.01&&rtt<0.15) { const ceil=getQualitySettings().bps.bps; nb=Math.min(ceil,Math.floor(currentMaxBitrate*1.1)); updateQualityIndicator('good'); }
+      else updateQualityIndicator(lossRate<0.03?'good':'fair');
+      if (nb!==currentMaxBitrate) {
+        currentMaxBitrate=nb;
+        for (const sender of pc.getSenders()) {
+          if (!sender.track||sender.track.kind!=='video') continue;
+          try { const p=sender.getParameters(); if(!p.encodings?.length)p.encodings=[{}]; p.encodings[0].maxBitrate=nb; await sender.setParameters(p); } catch(e){}
         }
       }
-    } catch (err) {}
+    } catch(err){}
   }, 3000);
 }
 
 function stopAdaptiveBitrate() {
-  if (adaptiveTimer) { clearInterval(adaptiveTimer); adaptiveTimer = null; }
-  if (keyframeTimer) { clearInterval(keyframeTimer); keyframeTimer = null; }
-  currentMaxBitrate = 200000;
-  lastPacketsLost = 0; lastPacketsSent = 0;
+  if (adaptiveTimer){clearInterval(adaptiveTimer);adaptiveTimer=null;}
+  if (keyframeTimer){clearInterval(keyframeTimer);keyframeTimer=null;}
+  currentMaxBitrate=200000; lastPacketsLost=0; lastPacketsSent=0;
 }
 
-// ── Forced keyframes ──────────────────────────────────────────
 function startKeyframeInterval(pc) {
   if (keyframeTimer) clearInterval(keyframeTimer);
   keyframeTimer = setInterval(async () => {
-    if (!pc || pc.connectionState !== 'connected') return;
-    try {
-      const senders = pc.getSenders();
-      for (const sender of senders) {
-        if (sender.track?.kind === 'video' && sender.generateKeyFrame) {
-          await sender.generateKeyFrame();
-        }
-      }
-    } catch (err) {}
+    if (!pc||pc.connectionState!=='connected') return;
+    for (const sender of pc.getSenders()) {
+      if (sender.track?.kind==='video'&&sender.generateKeyFrame) { try{await sender.generateKeyFrame();}catch(e){} }
+    }
   }, 2000);
 }
 
-// ── Quality indicator ─────────────────────────────────────────
 function updateQualityIndicator(level) {
-  const el = document.getElementById('stream-quality');
-  if (!el) return;
-  const map = {
-    good: { text: 'Good', color: 'var(--accent)' },
-    fair: { text: 'Fair', color: 'var(--warn)' },
-    poor: { text: 'Poor', color: 'var(--danger)' }
-  };
-  const q = map[level] || map.good;
-  el.textContent = q.text;
-  el.style.color = q.color;
+  const el=getEl('stream-quality'); if(!el) return;
+  const map={good:{text:'Good',color:'var(--accent)'},fair:{text:'Fair',color:'var(--warn)'},poor:{text:'Poor',color:'var(--danger)'}};
+  const q=map[level]||map.good; el.textContent=q.text; el.style.color=q.color;
 }
 
-// ── Pull-based signalling: viewer initiates ───────────────────
+// ── Signalling channel ────────────────────────────────────────
 function setupRTCChannel() {
   initSupabaseClient();
-  if (rtcChannel) { rtcChannel.unsubscribe(); rtcChannel = null; }
-  rtcChannel = supabaseClient.channel(STREAM_CH, { config: { broadcast: { self: false } } });
+  if (rtcChannel){rtcChannel.unsubscribe();rtcChannel=null;}
+  rtcChannel = supabaseClient.channel(STREAM_CH, {config:{broadcast:{self:false}}});
 
-  // BROADCASTER: viewer announces they are ready — create fresh PC and send offer
-  rtcChannel.on('broadcast', { event: 'viewer-ready' }, async () => {
-    if (!isBroadcasting) return;
-    // Reset peer connection for this viewer
-    if (peerConnection) { peerConnection.close(); peerConnection = null; }
-    remoteDescSet = false; pendingCandidates = [];
-    await createPeerConnection(true);
-    await sendOffer();
-    setStreamStatus('live', 'Viewer connecting…');
-  });
-
-  // VIEWER: receives offer from broadcaster
-  rtcChannel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
-    if (!isWatching) return;
-    if (negotiating) return;
-    negotiating = true;
-    remoteDescSet = false; pendingCandidates = [];
-    setStreamStatus('connecting', 'Connecting to stream…');
-
-    if (peerConnection) { peerConnection.close(); peerConnection = null; }
-    await createPeerConnection(false);
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-    remoteDescSet = true;
-
-    for (const c of pendingCandidates) {
-      try { await peerConnection.addIceCandidate(new RTCIceCandidate(c)); } catch (e) {}
-    }
-    pendingCandidates = [];
-
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    rtcChannel.send({ type: 'broadcast', event: 'answer', payload: { sdp: answer } });
-  });
-
-  // BROADCASTER: receives answer from viewer
-  rtcChannel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
-    if (!isBroadcasting || !peerConnection) return;
+  // Initiator receives answer from responder
+  rtcChannel.on('broadcast',{event:'answer'}, async ({payload}) => {
+    if (!inCall||!isInitiator||!peerConnection) return;
     try {
       await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-      remoteDescSet = true;
-      for (const c of pendingCandidates) {
-        try { await peerConnection.addIceCandidate(new RTCIceCandidate(c)); } catch (e) {}
-      }
-      pendingCandidates = [];
-    } catch (err) {}
+      remoteDescSet=true;
+      for (const c of pendingCandidates){try{await peerConnection.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
+      pendingCandidates=[];
+    } catch(err){}
   });
 
-  // Both: handle ICE candidates with queuing
-  rtcChannel.on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
+  // Responder receives offer from initiator
+  rtcChannel.on('broadcast',{event:'offer'}, async ({payload}) => {
+    if (!inCall||isInitiator) return;
+    if (negotiating) return;
+    negotiating=true; remoteDescSet=false; pendingCandidates=[];
+    setStreamStatus('connecting','Connecting…');
+    if (peerConnection){peerConnection.close();peerConnection=null;}
+    await createPeerConnection(false);
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+    remoteDescSet=true;
+    for (const c of pendingCandidates){try{await peerConnection.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
+    pendingCandidates=[];
+    const answer=await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+    rtcChannel.send({type:'broadcast',event:'answer',payload:{sdp:answer}});
+  });
+
+  // ICE candidates with queuing
+  rtcChannel.on('broadcast',{event:'ice-candidate'}, async ({payload}) => {
     if (!peerConnection) return;
-    if (!remoteDescSet) { pendingCandidates.push(payload.candidate); }
-    else { try { await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch (e) {} }
+    if (!remoteDescSet) pendingCandidates.push(payload.candidate);
+    else { try{await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));}catch(e){} }
   });
 
-  // VIEWER: broadcaster stopped
-  rtcChannel.on('broadcast', { event: 'stream-ended' }, () => {
-    if (isWatching) {
-      cleanupStream();
-      setStreamStatus('', 'Stream ended');
-      showToast('Stream ended');
-      getEl('tab-stream').classList.remove('live-dot');
-    }
+  // Other side ended call
+  rtcChannel.on('broadcast',{event:'call-ended'}, () => {
+    if (inCall) { cleanupStream(); setStreamStatus('','Call ended'); showToast('Call ended'); getEl('tab-stream').classList.remove('live-dot'); }
   });
 
-  return new Promise(resolve => {
-    rtcChannel.subscribe(status => { if (status === 'SUBSCRIBED') resolve(); });
+  // Responder announces readiness — initiator sends offer
+  rtcChannel.on('broadcast',{event:'responder-ready'}, async () => {
+    if (!inCall||!isInitiator||!peerConnection) return;
+    await sendOffer();
+    setStreamStatus('connecting','Connecting…');
   });
+
+  return new Promise(resolve => { rtcChannel.subscribe(status=>{if(status==='SUBSCRIBED')resolve();}); });
 }
 
-async function createPeerConnection(broadcaster) {
+async function createPeerConnection(initiator) {
   peerConnection = new RTCPeerConnection(RTC_CONFIG);
+  window._debugPC = peerConnection;
 
-  peerConnection.onicecandidate = ({ candidate }) => {
-    if (candidate && rtcChannel) {
-      rtcChannel.send({ type: 'broadcast', event: 'ice-candidate', payload: { candidate } });
-    }
+  peerConnection.onicecandidate = ({candidate}) => {
+    if (candidate&&rtcChannel) rtcChannel.send({type:'broadcast',event:'ice-candidate',payload:{candidate}});
   };
 
   peerConnection.onconnectionstatechange = () => {
-    const state = peerConnection?.connectionState;
-    if (state === 'connected') {
-      negotiating = false;
-      setStreamStatus(broadcaster ? 'live' : 'watching', broadcaster ? 'You are live' : 'Watching live');
-      if (broadcaster) applyBitrateLimit(peerConnection);
-    } else if (state === 'disconnected' || state === 'failed') {
-      negotiating = false;
-      if (isBroadcasting) {
-        // Viewer dropped — reset and wait for next viewer-ready
-        if (peerConnection) { peerConnection.close(); peerConnection = null; }
-        remoteDescSet = false; pendingCandidates = [];
-        createPeerConnection(true);
-        setStreamStatus('live', 'You are live — waiting for viewer…');
-      } else if (state === 'disconnected') {
-        // Try ICE restart before giving up
-        if (isWatching) {
-          setStreamStatus('connecting', 'Reconnecting…');
-          tryIceRestart(pc);
-        } else {
-          cleanupStream(); setStreamStatus('', 'Connection lost');
-        }
-      } else if (state === 'failed') {
-        cleanupStream(); setStreamStatus('', 'Connection lost');
-      }
+    const state=peerConnection?.connectionState;
+    if (state==='connected') {
+      negotiating=false;
+      setStreamStatus(inCall?'live':'watching','In call');
+      applyBitrateLimit(peerConnection);
+      showCallUI();
+    } else if (state==='disconnected') {
+      if (inCall) { setStreamStatus('connecting','Reconnecting…'); tryIceRestart(peerConnection); }
+    } else if (state==='failed') {
+      if (inCall) autoReconnect();
     }
   };
 
-  if (!broadcaster) {
-    peerConnection.ontrack = ({ streams }) => {
-      const rv = getEl('remote-video');
-      rv.srcObject = streams[0];
-      rv.style.display = 'block';
-      getEl('no-stream-msg').style.display = 'none';
-      rv.play().catch(() => {});
-    };
+  // Both sides receive remote tracks
+  peerConnection.ontrack = ({streams}) => {
+    const rv=getEl('remote-video');
+    rv.srcObject=streams[0]; rv.play().catch(()=>{});
+    getEl('no-stream-msg').style.display='none';
+  };
+
+  // Add local tracks (both sides send)
+  if (localStream) localStream.getTracks().forEach(track=>peerConnection.addTrack(track,localStream));
+
+  // Data channel setup
+  if (initiator) {
+    dataChannel = peerConnection.createDataChannel('chat', {ordered:true});
+    setupDataChannel(dataChannel);
   } else {
-    if (localStream) {
-      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-    }
+    peerConnection.ondatachannel = ({channel}) => { dataChannel=channel; setupDataChannel(dataChannel); };
   }
-  // Expose for console diagnostics
-  window._debugPC = peerConnection;
 }
 
 async function sendOffer() {
-  if (!peerConnection || !isBroadcasting) return;
-  remoteDescSet = false; pendingCandidates = [];
-  const offer = await peerConnection.createOffer();
-  const constrained = { type: offer.type, sdp: constrainSDP(offer.sdp) };
+  if (!peerConnection||!inCall) return;
+  remoteDescSet=false; pendingCandidates=[];
+  const offer=await peerConnection.createOffer();
+  const constrained={type:offer.type,sdp:constrainSDP(offer.sdp)};
   await peerConnection.setLocalDescription(constrained);
-  lastOffer = constrained;
-  rtcChannel.send({ type: 'broadcast', event: 'offer', payload: { sdp: constrained } });
+  lastOffer=constrained;
+  rtcChannel.send({type:'broadcast',event:'offer',payload:{sdp:constrained}});
 }
 
-// ── Broadcaster goes live ─────────────────────────────────────
-async function startBroadcast() {
-  if (isBroadcasting || isWatching) return;
-  try { localStream = await getLocalStream(); }
-  catch (err) { showToast('Camera access denied'); return; }
+// ── Data channel / chat ───────────────────────────────────────
+function setupDataChannel(dc) {
+  dc.onopen = () => {
+    getEl('chat-send').disabled=false;
+    getEl('chat-input').placeholder='Type a message…';
+  };
+  dc.onclose = () => { getEl('chat-send').disabled=true; };
+  dc.onmessage = ({data}) => {
+    try { const msg=JSON.parse(data); appendChatMessage(msg.text, false, msg.time); } catch(e){}
+  };
+}
 
-  isBroadcasting = true;
-  remoteDescSet = false; pendingCandidates = []; negotiating = false;
-  isMuted = false; isCamHidden = false;
-  setStreamStatus('connecting', 'Setting up broadcast…');
-  setStreamUI('broadcasting');
+function appendChatMessage(text, sent, time) {
+  const container=getEl('chat-messages');
+  const empty=getEl('chat-empty');
+  if (empty) empty.remove();
+  const div=document.createElement('div');
+  div.className='chat-msg '+(sent?'sent':'received');
+  div.innerHTML=`${escHtml(text)}<div class="msg-time">${time}</div>`;
+  container.appendChild(div);
+  container.scrollTop=container.scrollHeight;
+}
 
-  const lv = getEl('local-video');
-  lv.srcObject = localStream; lv.style.display = 'block'; lv.style.opacity = '1';
-  lv.play().catch(() => {});
-  getEl('no-stream-msg').style.display = 'none';
+function sendChatMessage() {
+  const input=getEl('chat-input');
+  const text=input.value.trim(); if(!text||!dataChannel||dataChannel.readyState!=='open') return;
+  const time=fmt12time(nowTs());
+  dataChannel.send(JSON.stringify({text,time}));
+  appendChatMessage(text,true,time);
+  input.value='';
+}
 
+function chatKeydown(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChatMessage();} }
+
+// ── ICE restart / auto-reconnect ──────────────────────────────
+async function tryIceRestart(pc) {
+  if (!pc||!rtcChannel) return;
+  try {
+    const offer=await pc.createOffer({iceRestart:true});
+    const constrained={type:offer.type,sdp:constrainSDP(offer.sdp)};
+    await pc.setLocalDescription(constrained);
+    rtcChannel.send({type:'broadcast',event:'offer',payload:{sdp:constrained}});
+  } catch(err){ autoReconnect(); }
+}
+
+let reconnectTimer=null, reconnectAttempts=0;
+function autoReconnect() {
+  if (!inCall||reconnectAttempts>=5){cleanupStream();setStreamStatus('','Could not reconnect');reconnectAttempts=0;return;}
+  reconnectAttempts++;
+  const delay=Math.min(2000*reconnectAttempts,10000);
+  setStreamStatus('connecting',`Reconnecting… (${reconnectAttempts}/5)`);
+  reconnectTimer=setTimeout(async()=>{
+    if (!inCall) return;
+    if (peerConnection){peerConnection.close();peerConnection=null;}
+    remoteDescSet=false;pendingCandidates=[];negotiating=false;
+    await createPeerConnection(isInitiator);
+    if (isInitiator) await sendOffer();
+    else if(rtcChannel) rtcChannel.send({type:'broadcast',event:'responder-ready',payload:{}});
+  },delay);
+}
+
+// ── Call flow ─────────────────────────────────────────────────
+async function startCall() {
+  // Check if call already in progress
+  const busy = await checkStreamActive();
+  if (busy) { showBusyScreen(); return; }
+
+  try { localStream=await getLocalStream(); }
+  catch(err){ showToast('Camera/mic access denied'); return; }
+
+  inCall=true; isInitiator=true;
+  isMuted=false; isCamHidden=false;
+  remoteDescSet=false; pendingCandidates=[]; negotiating=false;
+
+  // Show local video immediately
+  const lv=getEl('local-video'); lv.srcObject=localStream; lv.play().catch(()=>{});
+  showCallUI(); setStreamStatus('connecting','Waiting for other user…');
+  getEl('no-stream-msg').style.display='flex';
+  getEl('tab-stream').classList.add('live-dot');
+
+  await setStreamActive(true);
   await setupRTCChannel();
   await createPeerConnection(true);
-  // Don't send offer yet — wait for viewer-ready signal
-  await setStreamActive(true);
-  setStreamStatus('live', 'You are live — waiting for viewer…');
-  getEl('tab-stream').classList.add('live-dot');
+  // Initiator waits for responder-ready before sending offer
 }
 
-// ── Viewer joins ──────────────────────────────────────────────
-async function startWatch() {
-  if (isBroadcasting || isWatching) return;
-  isWatching = true;
-  remoteDescSet = false; pendingCandidates = []; negotiating = false;
-  setStreamStatus('connecting', 'Connecting…');
-  setStreamUI('watching');
+async function joinCall() {
+  try { localStream=await getLocalStream(); }
+  catch(err){ showToast('Camera/mic access denied'); return; }
+
+  inCall=true; isInitiator=false;
+  isMuted=false; isCamHidden=false;
+  remoteDescSet=false; pendingCandidates=[]; negotiating=false;
+
+  const lv=getEl('local-video'); lv.srcObject=localStream; lv.play().catch(()=>{});
+  showCallUI(); setStreamStatus('connecting','Joining call…');
+  getEl('no-stream-msg').style.display='flex';
+
   await setupRTCChannel();
-  // Announce to broadcaster that viewer is ready
-  rtcChannel.send({ type: 'broadcast', event: 'viewer-ready', payload: {} });
-  setStreamStatus('connecting', 'Waiting for stream…');
-}
-
-// Auto-join as viewer when tab opened and stream is active
-async function autoJoinAsViewer() {
-  if (isBroadcasting || isWatching) return;
-  const active = await checkStreamActive();
-  if (!active) return;
-  startWatch();
-}
-
-// ── Broadcaster controls ──────────────────────────────────────
-// ── ICE restart ──────────────────────────────────────────────
-async function tryIceRestart(pc) {
-  if (!pc || !rtcChannel) return;
-  try {
-    const offer = await pc.createOffer({ iceRestart: true });
-    const constrained = { type: offer.type, sdp: constrainSDP(offer.sdp) };
-    await pc.setLocalDescription(constrained);
-    rtcChannel.send({ type: 'broadcast', event: 'offer', payload: { sdp: constrained } });
-  } catch (err) {
-    // ICE restart failed — try full reconnect
-    autoReconnectViewer();
-  }
-}
-
-// ── Auto-reconnect viewer ─────────────────────────────────────
-let reconnectTimer = null;
-let reconnectAttempts = 0;
-const MAX_RECONNECT = 5;
-
-function autoReconnectViewer() {
-  if (!isWatching || reconnectAttempts >= MAX_RECONNECT) {
-    cleanupStream(); setStreamStatus('', 'Could not reconnect');
-    reconnectAttempts = 0; return;
-  }
-  reconnectAttempts++;
-  const delay = Math.min(2000 * reconnectAttempts, 10000);
-  setStreamStatus('connecting', `Reconnecting… (${reconnectAttempts}/${MAX_RECONNECT})`);
-  reconnectTimer = setTimeout(async () => {
-    if (!isWatching) return;
-    // Reset peer connection and re-announce
-    if (peerConnection) { peerConnection.close(); peerConnection = null; }
-    remoteDescSet = false; pendingCandidates = []; negotiating = false;
-    await createPeerConnection(false);
-    if (rtcChannel) rtcChannel.send({ type: 'broadcast', event: 'viewer-ready', payload: {} });
-  }, delay);
-}
-
-function toggleMute() {
-  if (!localStream) return;
-  const track = localStream.getAudioTracks()[0]; if (!track) return;
-  isMuted = !isMuted; track.enabled = !isMuted;
-  const btn = getEl('btn-mute');
-  btn.textContent = isMuted ? '🔇 Unmute' : '🔊 Mute';
-  btn.style.color = isMuted ? 'var(--warn)' : '';
-  btn.style.borderColor = isMuted ? 'var(--warn-border)' : '';
-}
-
-function toggleCamera() {
-  if (!localStream) return;
-  const track = localStream.getVideoTracks()[0]; if (!track) return;
-  isCamHidden = !isCamHidden; track.enabled = !isCamHidden;
-  const btn = getEl('btn-cam');
-  btn.textContent = isCamHidden ? '📷 Show Cam' : '📷 Hide Cam';
-  btn.style.color = isCamHidden ? 'var(--warn)' : '';
-  btn.style.borderColor = isCamHidden ? 'var(--warn-border)' : '';
-  getEl('local-video').style.opacity = isCamHidden ? '0.2' : '1';
+  await createPeerConnection(false);
+  rtcChannel.send({type:'broadcast',event:'responder-ready',payload:{}});
 }
 
 function stopStream() {
-  if (isBroadcasting && rtcChannel) {
-    rtcChannel.send({ type: 'broadcast', event: 'stream-ended', payload: {} });
-  }
-  if (isBroadcasting) setStreamActive(false);
+  if (inCall&&rtcChannel) rtcChannel.send({type:'broadcast',event:'call-ended',payload:{}});
+  if (inCall) setStreamActive(false);
   cleanupStream();
-  setStreamStatus('', 'Stream stopped');
+  setStreamStatus('','Call ended');
   getEl('tab-stream').classList.remove('live-dot');
 }
 
 function cleanupStream() {
-  isBroadcasting = false; isWatching = false; negotiating = false;
-  remoteDescSet = false; pendingCandidates = [];
+  inCall=false; isInitiator=false; negotiating=false;
+  remoteDescSet=false; pendingCandidates=[];
   stopAdaptiveBitrate();
-  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
-  reconnectAttempts = 0;
-  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-  if (peerConnection) { peerConnection.close(); peerConnection = null; }
-  if (rtcChannel) { rtcChannel.unsubscribe(); rtcChannel = null; }
-  const lv = getEl('local-video'), rv = getEl('remote-video');
-  lv.srcObject = null; lv.style.display = 'none'; lv.style.opacity = '1';
-  rv.srcObject = null; rv.style.display = 'none';
-  getEl('no-stream-msg').style.display = 'block';
-  isMuted = false; isCamHidden = false;
-  const bm = getEl('btn-mute'), bc = getEl('btn-cam');
-  if (bm) { bm.textContent = '🔊 Mute'; bm.style.color = ''; bm.style.borderColor = ''; }
-  if (bc) { bc.textContent = '📷 Hide Cam'; bc.style.color = ''; bc.style.borderColor = ''; }
+  if (reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}
+  reconnectAttempts=0;
+  if (dataChannel){dataChannel.close();dataChannel=null;}
+  if (localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
+  if (peerConnection){peerConnection.close();peerConnection=null;}
+  if (rtcChannel){rtcChannel.unsubscribe();rtcChannel=null;}
+  isMuted=false; isCamHidden=false;
+  const lv=getEl('local-video'), rv=getEl('remote-video');
+  lv.srcObject=null; lv.style.opacity='1';
+  rv.srcObject=null;
+  getEl('no-stream-msg').style.display='flex';
+  getEl('no-stream-msg').textContent='Connecting…';
+  // Reset chat
+  const chatCont=getEl('chat-messages');
+  if(chatCont) chatCont.innerHTML='<div class="chat-empty" id="chat-empty">No messages yet</div>';
+  const bm=getEl('btn-mute'),bc=getEl('btn-cam');
+  if(bm){bm.textContent='🔊 Mute';bm.style.color='';bm.style.borderColor='';}
+  if(bc){bc.textContent='📷 Hide Cam';bc.style.color='';bc.style.borderColor='';}
   updateQualityIndicator('good');
-  setStreamUI('idle');
+  showIdleUI();
+}
+
+function toggleMute() {
+  if(!localStream) return;
+  const track=localStream.getAudioTracks()[0]; if(!track) return;
+  isMuted=!isMuted; track.enabled=!isMuted;
+  const btn=getEl('btn-mute');
+  btn.textContent=isMuted?'🔇 Unmute':'🔊 Mute';
+  btn.style.color=isMuted?'var(--warn)':''; btn.style.borderColor=isMuted?'var(--warn-border)':'';
+}
+
+function toggleCamera() {
+  if(!localStream) return;
+  const track=localStream.getVideoTracks()[0]; if(!track) return;
+  isCamHidden=!isCamHidden; track.enabled=!isCamHidden;
+  const btn=getEl('btn-cam');
+  btn.textContent=isCamHidden?'📷 Show Cam':'📷 Hide Cam';
+  btn.style.color=isCamHidden?'var(--warn)':''; btn.style.borderColor=isCamHidden?'var(--warn-border)':'';
+  getEl('local-video').style.opacity=isCamHidden?'0.2':'1';
+}
+
+// ── UI helpers ────────────────────────────────────────────────
+function showIdleUI() {
+  getEl('stream-idle-card').style.display='block';
+  getEl('stream-busy-card').style.display='none';
+  getEl('stream-call-card').style.display='none';
+  getEl('stream-controls-card').style.display='none';
+  getEl('stream-notice-text').style.display='block';
+}
+
+function showBusyScreen() {
+  getEl('stream-idle-card').style.display='none';
+  getEl('stream-busy-card').style.display='block';
+  getEl('stream-call-card').style.display='none';
+  getEl('stream-controls-card').style.display='none';
+  getEl('stream-notice-text').style.display='none';
+  setStreamStatus('','Call in progress');
+}
+
+function showCallUI() {
+  getEl('stream-idle-card').style.display='none';
+  getEl('stream-busy-card').style.display='none';
+  getEl('stream-call-card').style.display='block';
+  getEl('stream-controls-card').style.display='block';
+  getEl('stream-notice-text').style.display='none';
+}
+
+async function showBusyOrJoin(active) {
+  if (!active) { showIdleUI(); return; }
+  if (inCall) return;
+  // Show join option for second user
+  getEl('stream-idle-card').style.display='none';
+  getEl('stream-busy-card').style.display='none';
+  getEl('stream-call-card').style.display='none';
+  getEl('stream-controls-card').style.display='none';
+  // Replace start call button temporarily with join
+  const idleCard = getEl('stream-idle-card');
+  idleCard.style.display='block';
+  const btn=getEl('btn-startcall');
+  btn.textContent='📞 Join Call';
+  btn.onclick=joinCall;
+  btn.style.background='var(--blue-dim)';
+  btn.style.borderColor='var(--blue-border)';
+  btn.style.color='var(--blue)';
+  getEl('stream-notice-text').style.display='none';
+  setStreamStatus('live','Call in progress — tap to join');
 }
 
 function setStreamUI(mode) {
-  const golive      = getEl('btn-golive');
-  const watch       = getEl('btn-watch');
-  const stopRow     = getEl('stop-row');
-  const camRow      = document.querySelector('.camera-select-row');
-  const bcControls  = getEl('broadcaster-controls');
-  const qualSliders = getEl('quality-sliders');
-  if (mode === 'idle') {
-    golive.disabled = false; watch.disabled = false;
-    stopRow.style.display = 'none'; camRow.style.display = 'flex';
-    if (bcControls)  bcControls.style.display  = 'flex';
-    if (qualSliders) qualSliders.style.display  = 'block';
-  } else {
-    golive.disabled = true; watch.disabled = true;
-    stopRow.style.display = 'block'; camRow.style.display = 'none';
-    if (bcControls)  bcControls.style.display  = mode === 'broadcasting' ? 'flex' : 'none';
-    if (qualSliders) qualSliders.style.display  = 'none';
-  }
+  // Legacy — kept for compatibility, actual UI driven by show*UI functions
 }
 
 // ── Media ─────────────────────────────────────────────────────
