@@ -414,10 +414,11 @@
     <!-- Call controls -->
     <div class="card" style="display:none" id="stream-controls-card">
       <div style="display:flex;gap:8px;margin-bottom:0.75rem">
-        <button class="stream-btn stop" style="flex:1" id="btn-mute" onclick="toggleMute()">&#128263; Mute</button>
-        <button class="stream-btn stop" style="flex:1" id="btn-cam"  onclick="toggleCamera()">&#128247; Hide Cam</button>
-        <button class="stream-btn stop" style="flex:1;background:var(--danger-dim);border-color:var(--danger-border);color:var(--danger)" onclick="stopStream()">&#9632; End Call</button>
+        <button class="stream-btn stop" style="flex:1" id="btn-mute"    onclick="toggleMute()">&#128263; Mute</button>
+        <button class="stream-btn stop" style="flex:1" id="btn-cam"     onclick="toggleCamera()">&#128247; Hide Cam</button>
+        <button class="stream-btn stop" style="flex:1" id="btn-flipcam" onclick="flipCamera()">&#128260; Flip</button>
       </div>
+      <button class="stream-btn stop" style="width:100%;background:var(--danger-dim);border-color:var(--danger-border);color:var(--danger);margin-bottom:0.75rem" onclick="stopStream()">&#9632; End Call</button>
       <!-- Chat -->
       <div class="chat-wrap">
         <p class="section-label">Chat</p>
@@ -483,6 +484,7 @@
     </div>
     <div class="card">
       <p class="section-label">Changelog</p>
+      <div class="changelog-entry"><div class="changelog-version">v1.20</div><div class="changelog-desc">Fixed manifest start_url, scope, and app name (was still showing Baby Log) — fixes home screen shortcut 404. Added audio routing fix and stricter audio constraints to Stream tab. Added camera Flip button for mid-call switching, synced from CommBadge.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.19</div><div class="changelog-desc">Rebuilt Stream tab as two-way video call with session chat. Both users send and receive video and audio. Single Start Call button — second user sees Join Call. Busy signal for third users. Data channel chat appears during call, cleared on end. Picture-in-picture local video. End Call button.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.18</div><div class="changelog-desc">Added stream quality sliders (resolution, frame rate, bitrate) shown before going live, saved to localStorage. Default resolution raised to 480×360. Bitrate, framerate and SDP cap all driven by slider values. window._debugPC exposed for console diagnostics.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.17</div><div class="changelog-desc">Added TURN server (Open Relay) for NAT traversal. Adaptive bitrate adjusts based on packet loss and RTT. Forced keyframe every 2 seconds for faster recovery. ICE restart on disconnection before full teardown. Auto-reconnect viewer up to 5 attempts with backoff. Connection quality indicator (Good/Fair/Poor) in stream status bar.</div></div>
@@ -508,7 +510,7 @@
       <div class="changelog-entry"><div class="changelog-version">v1.02</div><div class="changelog-desc">First PWA on Netlify with Supabase.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.01</div><div class="changelog-desc">Shared multi-user version with persistent storage.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.00</div><div class="changelog-desc">Initial logging app with Amount, Wet, BM, Pumped and timestamp.</div></div>
-      <div class="version-display">The MurDough Matrix v1.19</div>
+      <div class="version-display">The MurDough Matrix v1.20</div>
     </div>
   </div>
 
@@ -956,8 +958,17 @@ async function getLocalStream() {
   const { res, fps } = getQualitySettings();
   return await navigator.mediaDevices.getUserMedia({
     video: { facingMode: selectedCamera==='rear'?'environment':'user', width:{ideal:res.w,max:res.w}, height:{ideal:res.h,max:res.h}, frameRate:{ideal:fps,max:fps} },
-    audio: { echoCancellation:true, noiseSuppression:true, sampleRate:16000 }
+    audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true, googNoiseSuppression:true, googHighpassFilter:true, sampleRate:16000 }
   });
+}
+
+// Audio routing fix — attempts to restore default audio output
+// (prevents browser taking over headset audio on some devices)
+async function restoreAudioOutput() {
+  try {
+    const rv = getEl('remote-video');
+    if (rv && rv.setSinkId) await rv.setSinkId('default');
+  } catch (err) {}
 }
 
 // ── Quality settings ──────────────────────────────────────────
@@ -1153,6 +1164,7 @@ async function createPeerConnection(initiator) {
       setStreamStatus(inCall?'live':'watching','In call');
       applyBitrateLimit(peerConnection);
       showCallUI();
+      restoreAudioOutput();
     } else if (state==='disconnected') {
       if (inCall) { setStreamStatus('connecting','Reconnecting…'); tryIceRestart(peerConnection); }
     } else if (state==='failed') {
@@ -1164,6 +1176,7 @@ async function createPeerConnection(initiator) {
   peerConnection.ontrack = ({streams}) => {
     const rv=getEl('remote-video');
     rv.srcObject=streams[0]; rv.play().catch(()=>{});
+    restoreAudioOutput();
     getEl('no-stream-msg').style.display='none';
   };
 
@@ -1343,6 +1356,27 @@ function toggleCamera() {
   btn.textContent=isCamHidden?'📷 Show Cam':'📷 Hide Cam';
   btn.style.color=isCamHidden?'var(--warn)':''; btn.style.borderColor=isCamHidden?'var(--warn-border)':'';
   getEl('local-video').style.opacity=isCamHidden?'0.2':'1';
+}
+
+// Flip camera mid-call by replacing the video track
+async function flipCamera() {
+  if (!localStream) return;
+  selectedCamera = selectedCamera === 'rear' ? 'front' : 'rear';
+  try {
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: selectedCamera === 'rear' ? 'environment' : 'user' },
+      audio: false
+    });
+    const newTrack = newStream.getVideoTracks()[0];
+    if (peerConnection) {
+      const sender = peerConnection.getSenders().find(s => s.track?.kind === 'video');
+      if (sender) await sender.replaceTrack(newTrack);
+    }
+    const oldTrack = localStream.getVideoTracks()[0];
+    if (oldTrack) { oldTrack.stop(); localStream.removeTrack(oldTrack); }
+    localStream.addTrack(newTrack);
+    getEl('local-video').srcObject = localStream;
+  } catch (err) { showToast('Could not flip camera'); }
 }
 
 // ── UI helpers ────────────────────────────────────────────────
