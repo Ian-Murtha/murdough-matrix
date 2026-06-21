@@ -26,6 +26,7 @@
       --danger: #f0a8a8; --danger-dim: rgba(240,168,168,0.12); --danger-border: rgba(240,168,168,0.3);
       --warn: #f0d8a8; --warn-dim: rgba(240,216,168,0.12); --warn-border: rgba(240,216,168,0.3);
       --blue: #a8d8f0; --blue-dim: rgba(168,216,240,0.12); --blue-border: rgba(168,216,240,0.3);
+      --green: #4cdb7a; --green-dim: rgba(76,219,122,0.12); --green-border: rgba(76,219,122,0.35);
       --red: #f0a8a8; --red-dim: rgba(240,100,100,0.15); --red-border: rgba(240,100,100,0.4);
       --mono: 'DM Mono', monospace; --sans: 'DM Sans', sans-serif;
       --r: 12px; --r-sm: 8px;
@@ -133,63 +134,74 @@
     .bp-del:hover { color: var(--danger); border-color: var(--danger-border); }
     .chart-wrap { position: relative; height: 180px; }
 
-    /* Stream tab */
+    /* Stream tab — shared with CommBadge */
     .stream-status-bar { display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); font-family: var(--mono); font-size: 12px; color: var(--muted); }
     .stream-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background 0.3s; }
     .stream-dot.live { background: var(--danger); box-shadow: 0 0 6px rgba(240,100,100,0.6); animation: pulse 1.5s infinite; }
     .stream-dot.watching { background: var(--accent); }
     .stream-dot.connecting { background: var(--warn); }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .stream-btn-row { display: flex; gap: 8px; }
-    .stream-btn { flex: 1; padding: 13px; border-radius: var(--r-sm); font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; transition: background 0.15s, transform 0.1s; border: 1px solid; }
-    .stream-btn:active { transform: scale(0.98); }
-    .stream-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .stream-btn.go-live { background: var(--red-dim); border-color: var(--red-border); color: var(--danger); }
-    .stream-btn.go-live:hover:not(:disabled) { background: rgba(240,100,100,0.22); }
-    .stream-btn.watch { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
-    .stream-btn.watch:hover:not(:disabled) { background: rgba(168,240,198,0.2); }
-    .stream-btn.stop { background: var(--surface2); border-color: var(--border2); color: var(--muted); }
-    .stream-btn.stop:hover:not(:disabled) { color: var(--text); }
-    .stream-video-wrap { position: relative; background: #000; border-radius: var(--r-sm); overflow: hidden; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; }
-    .stream-video-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .stream-video-wrap .no-stream { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: center; padding: 2rem; }
-    .camera-select-row { display: flex; gap: 8px; margin-bottom: 0.75rem; }
-    .cam-btn { flex: 1; padding: 9px; border: 1px solid var(--border); border-radius: var(--r-sm); background: transparent; color: var(--muted); font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all 0.15s; text-align: center; }
-    .cam-btn.active { background: var(--surface2); color: var(--text); border-color: var(--border2); }
-    .stream-notice { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: center; line-height: 1.6; }
+    #stream-quality { margin-left: auto; font-size: 10px; font-family: var(--mono); color: var(--muted); }
+
+    /* Call buttons */
+    .call-btn { width: 100%; padding: 15px; border-radius: var(--r-sm); font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; transition: background 0.15s, transform 0.1s; border: 1px solid; min-height: 48px; }
+    .call-btn:active { transform: scale(0.99); }
+    .call-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .call-btn.green  { background: var(--green-dim);  border-color: var(--green-border);  color: var(--green); }
+    .call-btn.green:hover:not(:disabled)  { background: rgba(76,219,122,0.22); }
+    .call-btn.blue   { background: var(--blue-dim);   border-color: var(--blue-border);   color: var(--blue); }
+    .call-btn.blue:hover:not(:disabled)   { background: rgba(168,216,240,0.2); }
+    .call-btn.danger { background: var(--danger-dim); border-color: var(--danger-border); color: var(--danger); }
+    .call-btn.danger:hover:not(:disabled) { background: rgba(240,100,100,0.22); }
+    .call-btn.ctrl   { background: var(--surface2);   border-color: var(--border2);       color: var(--muted); }
+    .call-btn.ctrl:hover:not(:disabled)   { color: var(--text); }
+    .call-btn.warn   { background: var(--warn-dim);   border-color: var(--warn-border);   color: var(--warn); }
+
+    .ctrl-row { display: flex; gap: 8px; margin-bottom: 0.75rem; }
+    .ctrl-row .call-btn { flex: 1; padding: 13px; min-height: 48px; }
 
     /* Two-way call video layout */
-    .call-video-wrap { position: relative; background: #000; border-radius: var(--r-sm); overflow: hidden; aspect-ratio: 16/9; }
+    .call-video-wrap { position: relative; background: #000; border-radius: var(--r-sm); overflow: hidden; aspect-ratio: 16/9; border: 1px solid var(--border); }
     .call-video-wrap video#remote-video { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .call-video-wrap video#local-video  { position: absolute; bottom: 10px; right: 10px; width: 28%; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; border: 2px solid rgba(255,255,255,0.2); background: #111; z-index: 2; }
-    .call-video-wrap .no-stream { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+    .call-video-wrap video#local-video  { position: absolute; bottom: 8px; right: 8px; width: 26%; aspect-ratio: 16/9; object-fit: cover; border-radius: 4px; border: 2px solid rgba(255,255,255,0.2); background: #111; z-index: 2; }
+    .call-video-wrap .no-stream { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: center; padding: 1rem; }
 
     /* Chat */
-    .chat-wrap { display: flex; flex-direction: column; gap: 0; }
-    .chat-messages { min-height: 120px; max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-bottom: 0.5rem; }
-    .chat-msg { max-width: 80%; padding: 7px 11px; border-radius: 12px; font-size: 13px; line-height: 1.4; word-break: break-word; }
+    .chat-messages { min-height: 90px; max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-bottom: 4px; }
+    .chat-msg { max-width: 85%; padding: 7px 11px; border-radius: 12px; font-size: 13px; line-height: 1.4; word-break: break-word; }
     .chat-msg.sent     { align-self: flex-end; background: var(--accent-dim); border: 1px solid var(--accent-border); color: var(--text); border-bottom-right-radius: 3px; }
     .chat-msg.received { align-self: flex-start; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 3px; }
     .chat-msg .msg-time { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 3px; }
     .chat-empty { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: center; padding: 1rem 0; }
     .chat-input-row { display: flex; gap: 8px; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
-    .chat-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text); font-family: var(--sans); font-size: 14px; padding: 9px 12px; outline: none; transition: border-color 0.15s; }
+    .chat-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text); font-family: var(--sans); font-size: 14px; padding: 9px 12px; outline: none; }
     .chat-input:focus { border-color: var(--border2); }
     .chat-input::placeholder { color: var(--muted); }
-    .chat-send { background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: var(--r-sm); color: var(--accent); font-family: var(--mono); font-size: 12px; padding: 9px 14px; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+    .chat-send { background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: var(--r-sm); color: var(--accent); font-family: var(--mono); font-size: 12px; padding: 9px 14px; cursor: pointer; white-space: nowrap; }
     .chat-send:hover { background: rgba(168,240,198,0.22); }
     .chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* Busy signal */
-    .busy-screen { text-align: center; padding: 2rem 1rem; }
-    .busy-screen .busy-icon { font-size: 36px; margin-bottom: 0.75rem; }
-    .busy-screen .busy-text { font-family: var(--mono); font-size: 13px; color: var(--muted); line-height: 1.6; }
+    /* Busy */
+    .busy-card { text-align: center; padding: 2.5rem 1rem; }
+    .busy-icon { font-size: 40px; margin-bottom: 0.75rem; }
+    .busy-text { font-family: var(--mono); font-size: 13px; color: var(--muted); line-height: 1.8; }
+
+    /* Settings collapsible */
+    .settings-toggle { width: 100%; padding: 10px; background: transparent; border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--muted); font-family: var(--mono); font-size: 12px; cursor: pointer; transition: color 0.15s, border-color 0.15s; display: flex; align-items: center; justify-content: space-between; }
+    .settings-toggle:hover { color: var(--text); border-color: var(--border2); }
+    .settings-arrow { transition: transform 0.2s; display: inline-block; }
+    .settings-arrow.open { transform: rotate(180deg); }
+    .settings-body { display: none; padding-top: 1rem; }
+    .settings-body.open { display: block; }
+
+    /* Camera toggle */
+    .cam-toggle { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface2); color: var(--muted); font-family: var(--mono); font-size: 12px; cursor: pointer; transition: all 0.15s; margin-bottom: 0.875rem; }
+    .cam-toggle:hover { color: var(--text); border-color: var(--border2); }
 
     /* Stream quality sliders */
-    .quality-sliders { margin-bottom: 1rem; }
     .quality-row { display: flex; align-items: center; gap: 10px; margin-bottom: 0.6rem; }
     .quality-label { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 68px; flex-shrink: 0; text-align: right; letter-spacing: 0.05em; text-transform: uppercase; }
-    .quality-val { font-family: var(--mono); font-size: 11px; color: var(--accent); width: 72px; flex-shrink: 0; text-align: left; }
+    .quality-val { font-family: var(--mono); font-size: 11px; color: var(--accent); width: 72px; flex-shrink: 0; }
     input[type="range"] { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; background: var(--surface2); border-radius: 999px; outline: none; border: 1px solid var(--border); cursor: pointer; }
     input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); cursor: pointer; }
     input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); cursor: pointer; }
@@ -303,11 +315,7 @@
         <div class="field-wrap"><label>Amount</label><input type="text" id="amt-input" placeholder="e.g. 60 mL"></div>
         <div class="field-wrap"><label>Notes</label><input type="text" id="notes-input" placeholder="Optional"></div>
       </div>
-      <div class="pumped-row">
-        <div class="check-pill" id="pill-pump" onclick="toggleCheck('pump')">
-          <span class="check-icon" id="icon-pump"></span>Pumped
-        </div>
-      </div>
+      <div class="option-group"><span class="group-label">Type</span><div class="group-pills" id="group-type"></div></div>
       <div class="option-group"><span class="group-label">Diaper</span><div class="group-pills" id="group-diaper"></div></div>
       <div class="option-group"><span class="group-label">Exercises</span><div class="group-pills" id="group-exercises"></div></div>
       <div class="option-group"><span class="group-label">Other</span><div class="group-pills" id="group-other"></div></div>
@@ -363,64 +371,42 @@
     <div class="stream-status-bar">
       <span class="stream-dot" id="stream-dot"></span>
       <span id="stream-status-text">No active call</span>
-      <span id="stream-quality" style="margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--muted)"></span>
+      <span id="stream-quality"></span>
     </div>
 
-    <!-- Idle / pre-call controls -->
-    <div class="card" id="stream-idle-card">
-      <p class="section-label" style="margin-bottom:0.75rem">Camera</p>
-      <div class="camera-select-row">
-        <button class="cam-btn active" id="cam-rear" onclick="selectCamera('rear')">&#128247; Rear</button>
-        <button class="cam-btn" id="cam-front" onclick="selectCamera('front')">&#129318; Front</button>
-      </div>
-      <div class="quality-sliders" id="quality-sliders">
-        <p class="section-label" style="margin-bottom:0.6rem">Stream quality</p>
-        <div class="quality-row">
-          <span class="quality-label">Resolution</span>
-          <input type="range" id="sl-res" min="0" max="3" step="1" value="1" oninput="updateSliders()">
-          <span class="quality-val" id="lbl-res">480×360</span>
-        </div>
-        <div class="quality-row">
-          <span class="quality-label">Frame rate</span>
-          <input type="range" id="sl-fps" min="0" max="4" step="1" value="1" oninput="updateSliders()">
-          <span class="quality-val" id="lbl-fps">15 fps</span>
-        </div>
-        <div class="quality-row">
-          <span class="quality-label">Bitrate</span>
-          <input type="range" id="sl-bps" min="0" max="4" step="1" value="2" oninput="updateSliders()">
-          <span class="quality-val" id="lbl-bps">400 kbps</span>
-        </div>
-      </div>
-      <button class="stream-btn go-live" style="width:100%;margin-top:0.5rem" id="btn-startcall" onclick="startCall()">&#9679; Start Call</button>
+    <!-- Start / Join button (always visible when not in call) -->
+    <div class="card" id="card-action">
+      <button class="call-btn green" id="btn-start" onclick="startCall()">&#9679; Start Call</button>
     </div>
 
-    <!-- Busy signal -->
-    <div class="card" id="stream-busy-card" style="display:none">
-      <div class="busy-screen">
+    <!-- Busy screen -->
+    <div class="card" id="card-busy" style="display:none">
+      <div class="busy-card">
         <div class="busy-icon">📵</div>
         <div class="busy-text">A call is already in progress.<br>Please try again later.</div>
       </div>
     </div>
 
-    <!-- Active call -->
-    <div class="card" style="padding:0;overflow:hidden;display:none" id="stream-call-card">
+    <!-- Active call: video -->
+    <div class="card" style="padding:0;overflow:hidden;display:none" id="card-video">
       <div class="call-video-wrap">
         <video id="remote-video" autoplay playsinline></video>
         <video id="local-video"  autoplay muted playsinline></video>
         <div class="no-stream" id="no-stream-msg">Connecting…</div>
+        <div id="tap-audio-prompt" style="display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);border:1px solid rgba(255,255,255,0.2);border-radius:999px;padding:6px 16px;font-family:var(--mono);font-size:11px;color:#fff;cursor:pointer;z-index:5;white-space:nowrap" onclick="dismissAudioPrompt()">▶ Tap to hear audio</div>
       </div>
     </div>
 
-    <!-- Call controls -->
-    <div class="card" style="display:none" id="stream-controls-card">
-      <div style="display:flex;gap:8px;margin-bottom:0.75rem">
-        <button class="stream-btn stop" style="flex:1" id="btn-mute"    onclick="toggleMute()">&#128263; Mute</button>
-        <button class="stream-btn stop" style="flex:1" id="btn-cam"     onclick="toggleCamera()">&#128247; Hide Cam</button>
-        <button class="stream-btn stop" style="flex:1" id="btn-flipcam" onclick="flipCamera()">&#128260; Flip</button>
+    <!-- Active call: controls + chat -->
+    <div class="card" id="card-controls" style="display:none">
+      <div class="ctrl-row">
+        <button class="call-btn ctrl" id="btn-mute"    onclick="toggleMute()">🔊 Mute</button>
+        <button class="call-btn warn" id="btn-cam"     onclick="toggleCamera()">📷 Hide Cam</button>
+        <button class="call-btn ctrl" id="btn-flipcam" onclick="flipCamera()">🔄 Flip</button>
       </div>
-      <button class="stream-btn stop" style="width:100%;background:var(--danger-dim);border-color:var(--danger-border);color:var(--danger);margin-bottom:0.75rem" onclick="stopStream()">&#9632; End Call</button>
+      <button class="call-btn danger" style="margin-bottom:0.875rem" onclick="stopStream()">&#9632; End Call</button>
       <!-- Chat -->
-      <div class="chat-wrap">
+      <div>
         <p class="section-label">Chat</p>
         <div class="chat-messages" id="chat-messages">
           <div class="chat-empty" id="chat-empty">No messages yet</div>
@@ -428,6 +414,34 @@
         <div class="chat-input-row">
           <input type="text" class="chat-input" id="chat-input" placeholder="Type a message…" onkeydown="chatKeydown(event)" maxlength="500">
           <button class="chat-send" id="chat-send" onclick="sendChatMessage()" disabled>Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings (collapsible, always at bottom) -->
+    <div class="card" id="card-settings">
+      <button class="settings-toggle" onclick="toggleStreamSettings()">
+        <span>&#9881; Settings</span>
+        <span class="settings-arrow" id="settings-arrow">&#9660;</span>
+      </button>
+      <div class="settings-body" id="settings-body">
+        <div class="section-label" style="margin-bottom:0.5rem">Camera</div>
+        <button class="cam-toggle" id="cam-toggle-btn" onclick="toggleCameraFacing()">📷 Using Rear Camera</button>
+        <div class="section-label" style="margin-bottom:0.5rem">Stream Quality</div>
+        <div class="quality-row">
+          <span class="quality-label">Resolution</span>
+          <input type="range" id="sl-res" min="0" max="3" step="1" value="1" oninput="updateSliders()">
+          <span class="quality-val" id="lbl-res">480×360</span>
+        </div>
+        <div class="quality-row">
+          <span class="quality-label">Frame Rate</span>
+          <input type="range" id="sl-fps" min="0" max="4" step="1" value="1" oninput="updateSliders()">
+          <span class="quality-val" id="lbl-fps">15 fps</span>
+        </div>
+        <div class="quality-row" style="margin-bottom:0">
+          <span class="quality-label">Bitrate</span>
+          <input type="range" id="sl-bps" min="0" max="4" step="1" value="2" oninput="updateSliders()">
+          <span class="quality-val" id="lbl-bps">400 kbps</span>
         </div>
       </div>
     </div>
@@ -484,6 +498,7 @@
     </div>
     <div class="card">
       <p class="section-label">Changelog</p>
+      <div class="changelog-entry"><div class="changelog-version">v1.21</div><div class="changelog-desc">Stream tab rebuilt to share code with IPM's CommBadge: same card layout, collapsible Settings panel, camera toggle button (replacing Rear/Front selector), and call logic. Added Wake Lock (keeps screen on during calls), facingMode fallback if the requested camera is unavailable, and automatic video/reconnect recovery when returning from background — none of these had actually made it into Matrix despite being listed as shared fixes. Tap-to-hear-audio prompt added for when iOS blocks remote audio autoplay. Baby tab: moved Pumped under Other (now first), added a new Type row with Breast and Formula buttons, tracked in the log going forward.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.20</div><div class="changelog-desc">Fixed manifest start_url, scope, and app name (was still showing Baby Log) — fixes home screen shortcut 404. Added audio routing fix and stricter audio constraints to Stream tab. Added camera Flip button for mid-call switching, synced from CommBadge.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.19</div><div class="changelog-desc">Rebuilt Stream tab as two-way video call with session chat. Both users send and receive video and audio. Single Start Call button — second user sees Join Call. Busy signal for third users. Data channel chat appears during call, cleared on end. Picture-in-picture local video. End Call button.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.18</div><div class="changelog-desc">Added stream quality sliders (resolution, frame rate, bitrate) shown before going live, saved to localStorage. Default resolution raised to 480×360. Bitrate, framerate and SDP cap all driven by slider values. window._debugPC exposed for console diagnostics.</div></div>
@@ -510,7 +525,7 @@
       <div class="changelog-entry"><div class="changelog-version">v1.02</div><div class="changelog-desc">First PWA on Netlify with Supabase.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.01</div><div class="changelog-desc">Shared multi-user version with persistent storage.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.00</div><div class="changelog-desc">Initial logging app with Amount, Wet, BM, Pumped and timestamp.</div></div>
-      <div class="version-display">The MurDough Matrix v1.20</div>
+      <div class="version-display">The MurDough Matrix v1.21</div>
     </div>
   </div>
 
@@ -560,12 +575,14 @@ let selectedCamera = 'rear';
 
 // ── Fields ───────────────────────────────────────────────────
 const FIELDS = [
-  { key: 'pump',  label: 'Pumped', dbKey: 'pumped', group: 'pumped',    color: '#a8f0c6' },
+  { key: 'breast',  label: 'Breast',  dbKey: 'breast',  group: 'type',      color: '#f0a8d0' },
+  { key: 'formula', label: 'Formula', dbKey: 'formula', group: 'type',      color: '#a8d8f0' },
   { key: 'wet',   label: 'Wet',    dbKey: 'wet',    group: 'diaper',    color: '#a8d8f0' },
   { key: 'bm',    label: 'BM',     dbKey: 'bm',     group: 'diaper',    color: '#f0d0a8' },
   { key: 'guppy', label: 'Guppy',  dbKey: 'guppy',  group: 'exercises', color: '#f0e8a8' },
   { key: 'tmj',   label: 'TMJ',    dbKey: 'tmj',    group: 'exercises', color: '#d0a8f0' },
   { key: 'tummy', label: 'Tummy',  dbKey: 'tummy',  group: 'exercises', color: '#f0a8d0' },
+  { key: 'pump',  label: 'Pumped', dbKey: 'pumped', group: 'other',     color: '#a8f0c6' },
   { key: 'd3',    label: 'D3',     dbKey: 'd3',     group: 'other',     color: '#f0f0a8' },
 ];
 
@@ -627,7 +644,7 @@ function setStreamStatus(state, msg) {
 
 // ── Build UI ─────────────────────────────────────────────────
 function buildCheckPills() {
-  ['diaper','exercises','other'].forEach(group => {
+  ['type','diaper','exercises','other'].forEach(group => {
     const el = getEl('group-'+group); if (!el) return;
     el.innerHTML = FIELDS.filter(f => f.group===group).map(f => `
       <div class="check-pill" id="pill-${f.key}" onclick="toggleCheck('${f.key}')">
@@ -888,90 +905,16 @@ async function deleteBP(id) {
   } catch (err) { showToast('Delete failed'); }
 }
 // ── Stream session presence ───────────────────────────────────
-async function setStreamActive(active) {
-  try {
-    const rows = await sbFetch('stream_session?order=id.asc&limit=1');
-    if (rows && rows.length) {
-      await sbFetch(`stream_session?id=eq.${rows[0].id}`, {
-        method: 'PATCH', prefer: 'return=minimal',
-        body: JSON.stringify({ active, updated_at: new Date().toISOString() })
-      });
-    }
-  } catch (err) {}
-}
-
-async function checkStreamActive() {
-  try {
-    const rows = await sbFetch('stream_session?order=id.asc&limit=1');
-    return rows && rows.length && rows[0].active === true;
-  } catch (err) { return false; }
-}
-
-async function pollStreamPresence() {
-  if (inCall) return;
-  const active = await checkStreamActive();
-  getEl('tab-stream').classList.toggle('live-dot', active);
-  if (active && getEl('panel-stream').classList.contains('active') && !inCall) {
-    showBusyOrJoin(active);
-  }
-}
-
-async function onStreamTabOpen() {
-  if (inCall) return;
-  const active = await checkStreamActive();
-  if (active) showBusyOrJoin(true);
-  else showIdleUI();
-}
-
-// ── WebRTC Two-way Call ───────────────────────────────────────
-let offerRepeatTimer  = null;
-let lastOffer         = null;
-let pendingCandidates = [];
-let remoteDescSet     = false;
-let negotiating       = false;
-let inCall            = false;
-let isInitiator       = false;
-let isMuted           = false;
-let isCamHidden       = false;
-let dataChannel       = null;
-let chatMessages      = [];
-
-const RTC_CONFIG = { iceServers: [
+// Call architecture shared with IPM's CommBadge — kept in sync between apps.
+const RTC_CONFIG = { iceTransportPolicy: 'all', iceCandidatePoolSize: 10, iceServers: [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turns:openrelay.metered.ca:443',username: 'openrelayproject', credential: 'openrelayproject' }
+  { urls: 'turn:openrelay.metered.ca:80',   username:'openrelayproject', credential:'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443',  username:'openrelayproject', credential:'openrelayproject' },
+  { urls: 'turns:openrelay.metered.ca:443', username:'openrelayproject', credential:'openrelayproject' },
 ]};
 
-function initSupabaseClient() {
-  if (!supabaseClient) supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
-}
-
-function selectCamera(facing) {
-  selectedCamera = facing;
-  getEl('cam-rear').classList.toggle('active', facing==='rear');
-  getEl('cam-front').classList.toggle('active', facing==='front');
-}
-
-async function getLocalStream() {
-  const { res, fps } = getQualitySettings();
-  return await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: selectedCamera==='rear'?'environment':'user', width:{ideal:res.w,max:res.w}, height:{ideal:res.h,max:res.h}, frameRate:{ideal:fps,max:fps} },
-    audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true, googNoiseSuppression:true, googHighpassFilter:true, sampleRate:16000 }
-  });
-}
-
-// Audio routing fix — attempts to restore default audio output
-// (prevents browser taking over headset audio on some devices)
-async function restoreAudioOutput() {
-  try {
-    const rv = getEl('remote-video');
-    if (rv && rv.setSinkId) await rv.setSinkId('default');
-  } catch (err) {}
-}
-
-// ── Quality settings ──────────────────────────────────────────
+// ── Quality options ───────────────────────────────────────────
 const RES_OPTIONS = [
   { label:'320×240',  w:320,  h:240  },
   { label:'480×360',  w:480,  h:360  },
@@ -988,10 +931,10 @@ const BPS_OPTIONS = [
 ];
 
 function getQualitySettings() {
-  const resIdx = parseInt(localStorage.getItem('mmx_sl_res') ?? '1');
-  const fpsIdx = parseInt(localStorage.getItem('mmx_sl_fps') ?? '1');
-  const bpsIdx = parseInt(localStorage.getItem('mmx_sl_bps') ?? '2');
-  return { res:RES_OPTIONS[Math.min(resIdx,3)], fps:FPS_OPTIONS[Math.min(fpsIdx,4)], bps:BPS_OPTIONS[Math.min(bpsIdx,4)] };
+  const ri=parseInt(localStorage.getItem('mmx_sl_res')?? '1');
+  const fi=parseInt(localStorage.getItem('mmx_sl_fps')?? '1');
+  const bi=parseInt(localStorage.getItem('mmx_sl_bps')?? '2');
+  return { res:RES_OPTIONS[Math.min(ri,3)], fps:FPS_OPTIONS[Math.min(fi,4)], bps:BPS_OPTIONS[Math.min(bi,4)] };
 }
 
 function updateSliders() {
@@ -1008,216 +951,314 @@ function initSliders() {
   updateSliders();
 }
 
-// ── SDP helpers ───────────────────────────────────────────────
-function constrainSDP(sdp) {
-  const lines = sdp.split('\r\n'); let vp8 = null;
-  for (const l of lines) { const m=l.match(/a=rtpmap:(\d+) VP8\/90000/); if(m){vp8=m[1];break;} }
-  let result = sdp;
-  if (vp8) {
-    result = result.replace(/m=video (\d+) [A-Z/]+ ([\d ]+)/, (match,port,pays) => {
-      const others = pays.split(' ').filter(p=>p!==vp8);
-      return `m=video ${port} UDP/TLS/RTP/SAVPF ${vp8} ${others.join(' ')}`;
+function toggleStreamSettings() {
+  const body=getEl('settings-body'), arrow=getEl('settings-arrow');
+  const isOpen=body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  arrow.classList.toggle('open',!isOpen);
+}
+
+// ── State ─────────────────────────────────────────────────────
+let inCall=false, isInitiator=false, isMuted=false, isCamHidden=false;
+let dataChannel=null, pendingCandidates=[], remoteDescSet=false, negotiating=false;
+let adaptiveTimer=null, keyframeTimer=null, lastPacketsLost=0, lastPacketsSent=0, currentMaxBitrate=200000;
+let reconnectTimer=null, reconnectAttempts=0;
+
+// ── Camera toggle ─────────────────────────────────────────────
+function toggleCameraFacing() {
+  selectedCamera = selectedCamera==='rear' ? 'front' : 'rear';
+  localStorage.setItem('mmx_camera', selectedCamera);
+  getEl('cam-toggle-btn').textContent = selectedCamera==='rear' ? '📷 Using Rear Camera' : '🤳 Using Front Camera';
+}
+
+// Flip camera mid-call by replacing video track
+async function flipCamera() {
+  if (!localStream) return;
+  selectedCamera = selectedCamera==='rear' ? 'front' : 'rear';
+  try {
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:selectedCamera==='rear'?'environment':'user' },
+      audio:false
+    });
+    const newTrack = newStream.getVideoTracks()[0];
+    // Replace track in peer connection
+    if (peerConnection) {
+      const sender = peerConnection.getSenders().find(s=>s.track?.kind==='video');
+      if (sender) await sender.replaceTrack(newTrack);
+    }
+    // Replace in local stream
+    const oldTrack = localStream.getVideoTracks()[0];
+    if (oldTrack) { oldTrack.stop(); localStream.removeTrack(oldTrack); }
+    localStream.addTrack(newTrack);
+    getEl('local-video').srcObject = localStream;
+  } catch(err) { showToast('Could not flip camera'); }
+}
+
+async function getLocalStream() {
+  const {res,fps}=getQualitySettings();
+  const facing = selectedCamera==='rear' ? 'environment' : 'user';
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ideal:facing}, width:{ideal:res.w,max:res.w}, height:{ideal:res.h,max:res.h}, frameRate:{ideal:fps,max:fps} },
+      audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, googNoiseSuppression:true, googHighpassFilter:true, sampleRate:16000 }
+    });
+  } catch(e) {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{exact:facing} },
+      audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true, googNoiseSuppression:true, googHighpassFilter:true, sampleRate:16000 }
     });
   }
-  const kbps = Math.round(getQualitySettings().bps.bps/1000);
-  result = result.replace(/(m=video [^\r\n]+\r\n)/g, `$1b=AS:${kbps}\r\n`);
+  return stream;
+}
+
+// Audio routing fix — attempts to restore default audio output
+// (prevents browser taking over headset audio on some devices)
+async function restoreAudioOutput() {
+  try {
+    const rv = getEl('remote-video');
+    if (rv && rv.setSinkId) await rv.setSinkId('default');
+  } catch (err) {}
+}
+
+async function setSessionActive(active) {
+  try {
+    const rows=await sbFetch('stream_session?order=id.asc&limit=1');
+    if(rows&&rows.length) await sbFetch(`stream_session?id=eq.${rows[0].id}`,{method:'PATCH',prefer:'return=minimal',body:JSON.stringify({active,updated_at:new Date().toISOString()})});
+  } catch(err){}
+}
+
+async function checkSessionActive() {
+  try {
+    const rows=await sbFetch('stream_session?order=id.asc&limit=1');
+    return rows&&rows.length&&rows[0].active===true;
+  } catch(err){return false;}
+}
+
+// ── SDP ───────────────────────────────────────────────────────
+function constrainSDP(sdp) {
+  const lines=sdp.split('\r\n'); let vp8=null;
+  for(const l of lines){const m=l.match(/a=rtpmap:(\d+) VP8\/90000/);if(m){vp8=m[1];break;}}
+  let result=sdp;
+  if(vp8) result=result.replace(/m=video (\d+) [A-Z/]+ ([\d ]+)/,(match,port,pays)=>`m=video ${port} UDP/TLS/RTP/SAVPF ${vp8} ${pays.split(' ').filter(p=>p!==vp8).join(' ')}`);
+  const kbps=Math.round(getQualitySettings().bps.bps/1000);
+  result=result.replace(/(m=video [^\r\n]+\r\n)/g,`$1b=AS:${kbps}\r\n`);
   return result;
 }
 
 async function applyBitrateLimit(pc) {
-  const { bps, fps } = getQualitySettings();
-  currentMaxBitrate = bps.bps;
-  for (const sender of pc.getSenders()) {
-    if (!sender.track) continue;
-    try {
-      const params = sender.getParameters();
-      if (!params.encodings?.length) params.encodings = [{}];
-      if (sender.track.kind==='video') { params.encodings[0].maxBitrate=bps.bps; params.encodings[0].maxFramerate=fps; }
+  const {bps,fps}=getQualitySettings(); currentMaxBitrate=bps.bps;
+  for(const sender of pc.getSenders()){
+    if(!sender.track) continue;
+    try{
+      const params=sender.getParameters();
+      if(!params.encodings?.length) params.encodings=[{}];
+      if(sender.track.kind==='video'){params.encodings[0].maxBitrate=bps.bps;params.encodings[0].maxFramerate=fps;}
       await sender.setParameters(params);
-    } catch (err) {}
+    }catch(e){}
   }
-  startAdaptiveBitrate(pc);
-  startKeyframeInterval(pc);
+  startAdaptiveBitrate(pc); startKeyframeInterval(pc);
 }
 
-// ── Adaptive bitrate ──────────────────────────────────────────
-let adaptiveTimer=null, keyframeTimer=null, lastPacketsLost=0, lastPacketsSent=0, currentMaxBitrate=200000;
-
 function startAdaptiveBitrate(pc) {
-  if (adaptiveTimer) clearInterval(adaptiveTimer);
-  adaptiveTimer = setInterval(async () => {
-    if (!pc||pc.connectionState!=='connected') return;
-    try {
+  if(adaptiveTimer) clearInterval(adaptiveTimer);
+  adaptiveTimer=setInterval(async()=>{
+    if(!pc||pc.connectionState!=='connected') return;
+    try{
       const stats=await pc.getStats(); let lost=0,sent=0,rtt=0;
-      stats.forEach(r => {
-        if (r.type==='outbound-rtp'&&r.kind==='video') sent=r.packetsSent||0;
-        if (r.type==='remote-inbound-rtp'&&r.kind==='video') { lost=r.packetsLost||0; rtt=r.roundTripTime||0; }
+      stats.forEach(r=>{
+        if(r.type==='outbound-rtp'&&r.kind==='video') sent=r.packetsSent||0;
+        if(r.type==='remote-inbound-rtp'&&r.kind==='video'){lost=r.packetsLost||0;rtt=r.roundTripTime||0;}
       });
-      const ld=lost-lastPacketsLost, sd=sent-lastPacketsSent;
-      lastPacketsLost=lost; lastPacketsSent=sent;
-      const lossRate=sd>0?ld/sd:0;
+      const ld=lost-lastPacketsLost,sd=sent-lastPacketsSent;
+      lastPacketsLost=lost;lastPacketsSent=sent;
+      const lr=sd>0?ld/sd:0;
       let nb=currentMaxBitrate;
-      if (lossRate>0.05||rtt>0.3) { nb=Math.max(50000,Math.floor(currentMaxBitrate*0.75)); updateQualityIndicator('poor'); }
-      else if (lossRate<0.01&&rtt<0.15) { const ceil=getQualitySettings().bps.bps; nb=Math.min(ceil,Math.floor(currentMaxBitrate*1.1)); updateQualityIndicator('good'); }
-      else updateQualityIndicator(lossRate<0.03?'good':'fair');
-      if (nb!==currentMaxBitrate) {
+      if(lr>0.05||rtt>0.3){nb=Math.max(50000,Math.floor(currentMaxBitrate*0.75));updateQualityIndicator('poor');}
+      else if(lr<0.01&&rtt<0.15){const ceil=getQualitySettings().bps.bps;nb=Math.min(ceil,Math.floor(currentMaxBitrate*1.1));updateQualityIndicator('good');}
+      else updateQualityIndicator(lr<0.03?'good':'fair');
+      if(nb!==currentMaxBitrate){
         currentMaxBitrate=nb;
-        for (const sender of pc.getSenders()) {
-          if (!sender.track||sender.track.kind!=='video') continue;
-          try { const p=sender.getParameters(); if(!p.encodings?.length)p.encodings=[{}]; p.encodings[0].maxBitrate=nb; await sender.setParameters(p); } catch(e){}
+        for(const sender of pc.getSenders()){
+          if(!sender.track||sender.track.kind!=='video') continue;
+          try{const p=sender.getParameters();if(!p.encodings?.length)p.encodings=[{}];p.encodings[0].maxBitrate=nb;await sender.setParameters(p);}catch(e){}
         }
       }
-    } catch(err){}
-  }, 3000);
+    }catch(err){}
+  },3000);
 }
 
 function stopAdaptiveBitrate() {
-  if (adaptiveTimer){clearInterval(adaptiveTimer);adaptiveTimer=null;}
-  if (keyframeTimer){clearInterval(keyframeTimer);keyframeTimer=null;}
-  currentMaxBitrate=200000; lastPacketsLost=0; lastPacketsSent=0;
+  if(adaptiveTimer){clearInterval(adaptiveTimer);adaptiveTimer=null;}
+  if(keyframeTimer){clearInterval(keyframeTimer);keyframeTimer=null;}
+  currentMaxBitrate=200000;lastPacketsLost=0;lastPacketsSent=0;
 }
 
 function startKeyframeInterval(pc) {
-  if (keyframeTimer) clearInterval(keyframeTimer);
-  keyframeTimer = setInterval(async () => {
-    if (!pc||pc.connectionState!=='connected') return;
-    for (const sender of pc.getSenders()) {
-      if (sender.track?.kind==='video'&&sender.generateKeyFrame) { try{await sender.generateKeyFrame();}catch(e){} }
+  if(keyframeTimer) clearInterval(keyframeTimer);
+  keyframeTimer=setInterval(async()=>{
+    if(!pc||pc.connectionState!=='connected') return;
+    for(const sender of pc.getSenders()){
+      if(sender.track?.kind==='video'&&sender.generateKeyFrame){try{await sender.generateKeyFrame();}catch(e){}}
     }
-  }, 2000);
+  },2000);
 }
 
 function updateQualityIndicator(level) {
-  const el=getEl('stream-quality'); if(!el) return;
+  const el=getEl('stream-quality');if(!el) return;
   const map={good:{text:'Good',color:'var(--accent)'},fair:{text:'Fair',color:'var(--warn)'},poor:{text:'Poor',color:'var(--danger)'}};
-  const q=map[level]||map.good; el.textContent=q.text; el.style.color=q.color;
+  const q=map[level]||map.good;el.textContent=q.text;el.style.color=q.color;
+  el.style.fontFamily="var(--mono)";el.style.fontSize='11px';
 }
 
-// ── Signalling channel ────────────────────────────────────────
-function setupRTCChannel() {
+// ── Signalling ────────────────────────────────────────────────
+function setupChannel() {
   initSupabaseClient();
-  if (rtcChannel){rtcChannel.unsubscribe();rtcChannel=null;}
-  rtcChannel = supabaseClient.channel(STREAM_CH, {config:{broadcast:{self:false}}});
+  if(rtcChannel){rtcChannel.unsubscribe();rtcChannel=null;}
+  rtcChannel=supabaseClient.channel(STREAM_CH,{config:{broadcast:{self:false}}});
 
-  // Initiator receives answer from responder
-  rtcChannel.on('broadcast',{event:'answer'}, async ({payload}) => {
-    if (!inCall||!isInitiator||!peerConnection) return;
-    try {
+  rtcChannel.on('broadcast',{event:'answer'},async({payload})=>{
+    if(!inCall||!isInitiator||!peerConnection) return;
+    try{
       await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp));
       remoteDescSet=true;
-      for (const c of pendingCandidates){try{await peerConnection.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
+      for(const c of pendingCandidates){try{await peerConnection.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
       pendingCandidates=[];
-    } catch(err){}
+    }catch(err){}
   });
 
-  // Responder receives offer from initiator
-  rtcChannel.on('broadcast',{event:'offer'}, async ({payload}) => {
-    if (!inCall||isInitiator) return;
-    if (negotiating) return;
-    negotiating=true; remoteDescSet=false; pendingCandidates=[];
+  rtcChannel.on('broadcast',{event:'offer'},async({payload})=>{
+    if(!inCall||isInitiator||negotiating) return;
+    negotiating=true;remoteDescSet=false;pendingCandidates=[];
     setStreamStatus('connecting','Connecting…');
-    if (peerConnection){peerConnection.close();peerConnection=null;}
-    await createPeerConnection(false);
+    if(peerConnection){peerConnection.close();peerConnection=null;}
+    await createPC(false);
     await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp));
     remoteDescSet=true;
-    for (const c of pendingCandidates){try{await peerConnection.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
+    for(const c of pendingCandidates){try{await peerConnection.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
     pendingCandidates=[];
     const answer=await peerConnection.createAnswer();
     await peerConnection.setLocalDescription(answer);
     rtcChannel.send({type:'broadcast',event:'answer',payload:{sdp:answer}});
   });
 
-  // ICE candidates with queuing
-  rtcChannel.on('broadcast',{event:'ice-candidate'}, async ({payload}) => {
-    if (!peerConnection) return;
-    if (!remoteDescSet) pendingCandidates.push(payload.candidate);
-    else { try{await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));}catch(e){} }
+  rtcChannel.on('broadcast',{event:'ice-candidate'},async({payload})=>{
+    if(!peerConnection) return;
+    if(!remoteDescSet) pendingCandidates.push(payload.candidate);
+    else{try{await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));}catch(e){}}
   });
 
-  // Other side ended call
-  rtcChannel.on('broadcast',{event:'call-ended'}, () => {
-    if (inCall) { cleanupStream(); setStreamStatus('','Call ended'); showToast('Call ended'); getEl('tab-stream').classList.remove('live-dot'); }
+  rtcChannel.on('broadcast',{event:'call-ended'},()=>{
+    if(inCall){cleanup();setStreamStatus('','Call ended');showToast('Call ended');}
   });
 
-  // Responder announces readiness — initiator sends offer
-  rtcChannel.on('broadcast',{event:'responder-ready'}, async () => {
-    if (!inCall||!isInitiator||!peerConnection) return;
-    await sendOffer();
-    setStreamStatus('connecting','Connecting…');
+  rtcChannel.on('broadcast',{event:'responder-ready'},async()=>{
+    if(!inCall||!isInitiator||!peerConnection) return;
+    await sendOffer(); setStreamStatus('connecting','Connecting…');
   });
 
-  return new Promise(resolve => { rtcChannel.subscribe(status=>{if(status==='SUBSCRIBED')resolve();}); });
+  return new Promise(resolve=>{rtcChannel.subscribe(status=>{if(status==='SUBSCRIBED')resolve();});});
 }
 
-async function createPeerConnection(initiator) {
-  peerConnection = new RTCPeerConnection(RTC_CONFIG);
-  window._debugPC = peerConnection;
+async function createPC(initiator) {
+  peerConnection=new RTCPeerConnection(RTC_CONFIG);
+  window._debugPC=peerConnection;
 
-  peerConnection.onicecandidate = ({candidate}) => {
-    if (candidate&&rtcChannel) rtcChannel.send({type:'broadcast',event:'ice-candidate',payload:{candidate}});
+  peerConnection.onicecandidate=({candidate})=>{
+    if(candidate&&rtcChannel) rtcChannel.send({type:'broadcast',event:'ice-candidate',payload:{candidate}});
   };
 
-  peerConnection.onconnectionstatechange = () => {
+  peerConnection.onconnectionstatechange=()=>{
     const state=peerConnection?.connectionState;
-    if (state==='connected') {
+    if(state==='connected'){
       negotiating=false;
-      setStreamStatus(inCall?'live':'watching','In call');
+      setStreamStatus('live','In call');
       applyBitrateLimit(peerConnection);
-      showCallUI();
+      getEl('no-stream-msg').style.display='none';
       restoreAudioOutput();
-    } else if (state==='disconnected') {
-      if (inCall) { setStreamStatus('connecting','Reconnecting…'); tryIceRestart(peerConnection); }
-    } else if (state==='failed') {
-      if (inCall) autoReconnect();
+      vibrate();
+      requestWakeLock();
+    } else if(state==='disconnected'){
+      setStreamStatus('connecting','Reconnecting…');
+      tryIceRestart(peerConnection);
+    } else if(state==='failed'){
+      autoReconnect();
     }
   };
 
-  // Both sides receive remote tracks
-  peerConnection.ontrack = ({streams}) => {
+  peerConnection.ontrack=({streams})=>{
     const rv=getEl('remote-video');
-    rv.srcObject=streams[0]; rv.play().catch(()=>{});
+    rv.srcObject=streams[0];
+    rv.play().catch(()=>{ showAudioPrompt(); });
     restoreAudioOutput();
     getEl('no-stream-msg').style.display='none';
   };
 
-  // Add local tracks (both sides send)
-  if (localStream) localStream.getTracks().forEach(track=>peerConnection.addTrack(track,localStream));
+  if(localStream) localStream.getTracks().forEach(track=>peerConnection.addTrack(track,localStream));
 
-  // Data channel setup
-  if (initiator) {
-    dataChannel = peerConnection.createDataChannel('chat', {ordered:true});
+  if(initiator){
+    dataChannel=peerConnection.createDataChannel('chat',{ordered:true});
     setupDataChannel(dataChannel);
   } else {
-    peerConnection.ondatachannel = ({channel}) => { dataChannel=channel; setupDataChannel(dataChannel); };
+    peerConnection.ondatachannel=({channel})=>{dataChannel=channel;setupDataChannel(dataChannel);};
   }
 }
 
 async function sendOffer() {
-  if (!peerConnection||!inCall) return;
-  remoteDescSet=false; pendingCandidates=[];
+  if(!peerConnection||!inCall) return;
+  remoteDescSet=false;pendingCandidates=[];
   const offer=await peerConnection.createOffer();
   const constrained={type:offer.type,sdp:constrainSDP(offer.sdp)};
   await peerConnection.setLocalDescription(constrained);
-  lastOffer=constrained;
   rtcChannel.send({type:'broadcast',event:'offer',payload:{sdp:constrained}});
 }
 
-// ── Data channel / chat ───────────────────────────────────────
-function setupDataChannel(dc) {
-  dc.onopen = () => {
-    getEl('chat-send').disabled=false;
-    getEl('chat-input').placeholder='Type a message…';
-  };
-  dc.onclose = () => { getEl('chat-send').disabled=true; };
-  dc.onmessage = ({data}) => {
-    try { const msg=JSON.parse(data); appendChatMessage(msg.text, false, msg.time); } catch(e){}
-  };
+async function tryIceRestart(pc) {
+  if(!pc||!rtcChannel) return;
+  try{
+    const offer=await pc.createOffer({iceRestart:true});
+    const constrained={type:offer.type,sdp:constrainSDP(offer.sdp)};
+    await pc.setLocalDescription(constrained);
+    rtcChannel.send({type:'broadcast',event:'offer',payload:{sdp:constrained}});
+  }catch(err){autoReconnect();}
 }
 
-function appendChatMessage(text, sent, time) {
+function autoReconnect() {
+  if(!inCall||reconnectAttempts>=5){cleanup();setStreamStatus('','Could not reconnect');reconnectAttempts=0;return;}
+  reconnectAttempts++;
+  const delay=Math.min(2000*reconnectAttempts,10000);
+  setStreamStatus('connecting',`Reconnecting… (${reconnectAttempts}/5)`);
+  reconnectTimer=setTimeout(async()=>{
+    if(!inCall) return;
+    if(peerConnection){peerConnection.close();peerConnection=null;}
+    remoteDescSet=false;pendingCandidates=[];negotiating=false;
+    await createPC(isInitiator);
+    if(isInitiator) await sendOffer();
+    else if(rtcChannel) rtcChannel.send({type:'broadcast',event:'responder-ready',payload:{}});
+  },delay);
+}
+
+// ── Chat ──────────────────────────────────────────────────────
+function showAudioPrompt() {
+  const prompt=getEl('tap-audio-prompt');
+  if(prompt) prompt.style.display='block';
+}
+function dismissAudioPrompt() {
+  const rv=getEl('remote-video');
+  if(rv) rv.play().catch(()=>{});
+  const prompt=getEl('tap-audio-prompt');
+  if(prompt) prompt.style.display='none';
+}
+
+function setupDataChannel(dc) {
+  dc.onopen=()=>{getEl('chat-send').disabled=false;getEl('chat-input').placeholder='Type a message…';};
+  dc.onclose=()=>{getEl('chat-send').disabled=true;};
+  dc.onmessage=({data})=>{try{const msg=JSON.parse(data);appendChat(msg.text,false,msg.time);}catch(e){}};
+}
+
+function appendChat(text,sent,time) {
   const container=getEl('chat-messages');
-  const empty=getEl('chat-empty');
-  if (empty) empty.remove();
+  const empty=getEl('chat-empty');if(empty)empty.remove();
   const div=document.createElement('div');
   div.className='chat-msg '+(sent?'sent':'received');
   div.innerHTML=`${escHtml(text)}<div class="msg-time">${time}</div>`;
@@ -1227,207 +1268,188 @@ function appendChatMessage(text, sent, time) {
 
 function sendChatMessage() {
   const input=getEl('chat-input');
-  const text=input.value.trim(); if(!text||!dataChannel||dataChannel.readyState!=='open') return;
+  const text=input.value.trim();if(!text||!dataChannel||dataChannel.readyState!=='open') return;
   const time=fmt12time(nowTs());
   dataChannel.send(JSON.stringify({text,time}));
-  appendChatMessage(text,true,time);
+  appendChat(text,true,time);
   input.value='';
 }
 
-function chatKeydown(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChatMessage();} }
-
-// ── ICE restart / auto-reconnect ──────────────────────────────
-async function tryIceRestart(pc) {
-  if (!pc||!rtcChannel) return;
-  try {
-    const offer=await pc.createOffer({iceRestart:true});
-    const constrained={type:offer.type,sdp:constrainSDP(offer.sdp)};
-    await pc.setLocalDescription(constrained);
-    rtcChannel.send({type:'broadcast',event:'offer',payload:{sdp:constrained}});
-  } catch(err){ autoReconnect(); }
-}
-
-let reconnectTimer=null, reconnectAttempts=0;
-function autoReconnect() {
-  if (!inCall||reconnectAttempts>=5){cleanupStream();setStreamStatus('','Could not reconnect');reconnectAttempts=0;return;}
-  reconnectAttempts++;
-  const delay=Math.min(2000*reconnectAttempts,10000);
-  setStreamStatus('connecting',`Reconnecting… (${reconnectAttempts}/5)`);
-  reconnectTimer=setTimeout(async()=>{
-    if (!inCall) return;
-    if (peerConnection){peerConnection.close();peerConnection=null;}
-    remoteDescSet=false;pendingCandidates=[];negotiating=false;
-    await createPeerConnection(isInitiator);
-    if (isInitiator) await sendOffer();
-    else if(rtcChannel) rtcChannel.send({type:'broadcast',event:'responder-ready',payload:{}});
-  },delay);
-}
+function chatKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChatMessage();}}
 
 // ── Call flow ─────────────────────────────────────────────────
 async function startCall() {
-  // Check if call already in progress
-  const busy = await checkStreamActive();
-  if (busy) { showBusyScreen(); return; }
-
-  try { localStream=await getLocalStream(); }
-  catch(err){ showToast('Camera/mic access denied'); return; }
-
-  inCall=true; isInitiator=true;
-  isMuted=false; isCamHidden=false;
-  remoteDescSet=false; pendingCandidates=[]; negotiating=false;
-
-  // Show local video immediately
-  const lv=getEl('local-video'); lv.srcObject=localStream; lv.play().catch(()=>{});
-  showCallUI(); setStreamStatus('connecting','Waiting for other user…');
-  getEl('no-stream-msg').style.display='flex';
-  getEl('tab-stream').classList.add('live-dot');
-
-  await setStreamActive(true);
-  await setupRTCChannel();
-  await createPeerConnection(true);
-  // Initiator waits for responder-ready before sending offer
+  const busy=await checkSessionActive();
+  if(busy){showBusy();return;}
+  try{localStream=await getLocalStream();}
+  catch(err){showToast('Camera/mic access denied');return;}
+  inCall=true;isInitiator=true;isMuted=false;isCamHidden=false;
+  remoteDescSet=false;pendingCandidates=[];negotiating=false;
+  const lv=getEl('local-video');lv.srcObject=localStream;
+  // Tight to user gesture for iOS autoplay compliance
+  lv.play().catch(()=>{});
+  showCallUI();setStreamStatus('connecting','Waiting for other user…');
+  await setSessionActive(true);
+  await setupChannel();
+  await createPC(true);
 }
 
 async function joinCall() {
-  try { localStream=await getLocalStream(); }
-  catch(err){ showToast('Camera/mic access denied'); return; }
-
-  inCall=true; isInitiator=false;
-  isMuted=false; isCamHidden=false;
-  remoteDescSet=false; pendingCandidates=[]; negotiating=false;
-
-  const lv=getEl('local-video'); lv.srcObject=localStream; lv.play().catch(()=>{});
-  showCallUI(); setStreamStatus('connecting','Joining call…');
-  getEl('no-stream-msg').style.display='flex';
-
-  await setupRTCChannel();
-  await createPeerConnection(false);
+  try{localStream=await getLocalStream();}
+  catch(err){showToast('Camera/mic access denied');return;}
+  inCall=true;isInitiator=false;isMuted=false;isCamHidden=false;
+  remoteDescSet=false;pendingCandidates=[];negotiating=false;
+  const lv=getEl('local-video');lv.srcObject=localStream;lv.play().catch(()=>{});
+  showCallUI();setStreamStatus('connecting','Joining call…');
+  await setupChannel();
+  await createPC(false);
   rtcChannel.send({type:'broadcast',event:'responder-ready',payload:{}});
 }
 
 function stopStream() {
-  if (inCall&&rtcChannel) rtcChannel.send({type:'broadcast',event:'call-ended',payload:{}});
-  if (inCall) setStreamActive(false);
-  cleanupStream();
-  setStreamStatus('','Call ended');
-  getEl('tab-stream').classList.remove('live-dot');
+  if(inCall&&rtcChannel) rtcChannel.send({type:'broadcast',event:'call-ended',payload:{}});
+  if(inCall) setSessionActive(false);
+  cleanup();setStreamStatus('','Call ended');
 }
 
-function cleanupStream() {
-  inCall=false; isInitiator=false; negotiating=false;
-  remoteDescSet=false; pendingCandidates=[];
+// ── Wake Lock ─────────────────────────────────────────────────
+let wakeLock = null;
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
+}
+
+async function releaseWakeLock() {
+  if (!wakeLock) return;
+  try { await wakeLock.release(); wakeLock = null; } catch(e) {}
+}
+
+// Re-acquire wake lock if released by system (e.g. tab hidden then shown)
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && inCall && !wakeLock) requestWakeLock();
+});
+
+// Recover stream when app returns from background/lock screen
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !inCall) return;
+  // Re-play video elements in case iOS paused them
+  try { const lv=getEl('local-video'); if(lv.srcObject) lv.play().catch(()=>{}); } catch(e) {}
+  try { const rv=getEl('remote-video'); if(rv.srcObject) rv.play().catch(()=>{ showAudioPrompt(); }); } catch(e) {}
+  // If connection dropped while backgrounded, attempt reconnect
+  if (peerConnection && (peerConnection.connectionState==='disconnected'||peerConnection.connectionState==='failed')) {
+    tryIceRestart(peerConnection);
+  }
+});
+
+function cleanup() {
+  inCall=false;isInitiator=false;negotiating=false;
+  remoteDescSet=false;pendingCandidates=[];
+  releaseWakeLock();
   stopAdaptiveBitrate();
-  if (reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}
+  if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null;}
   reconnectAttempts=0;
-  if (dataChannel){dataChannel.close();dataChannel=null;}
-  if (localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
-  if (peerConnection){peerConnection.close();peerConnection=null;}
-  if (rtcChannel){rtcChannel.unsubscribe();rtcChannel=null;}
-  isMuted=false; isCamHidden=false;
-  const lv=getEl('local-video'), rv=getEl('remote-video');
-  lv.srcObject=null; lv.style.opacity='1';
-  rv.srcObject=null;
+  if(dataChannel){dataChannel.close();dataChannel=null;}
+  if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
+  if(peerConnection){peerConnection.close();peerConnection=null;}
+  if(rtcChannel){rtcChannel.unsubscribe();rtcChannel=null;}
+  isMuted=false;isCamHidden=false;
+  const lv=getEl('local-video'),rv=getEl('remote-video');
+  lv.srcObject=null;lv.style.opacity='1';rv.srcObject=null;
   getEl('no-stream-msg').style.display='flex';
-  getEl('no-stream-msg').textContent='Connecting…';
-  // Reset chat
+  const audioPrompt=getEl('tap-audio-prompt'); if(audioPrompt) audioPrompt.style.display='none';
   const chatCont=getEl('chat-messages');
   if(chatCont) chatCont.innerHTML='<div class="chat-empty" id="chat-empty">No messages yet</div>';
+  getEl('chat-send').disabled=true;
   const bm=getEl('btn-mute'),bc=getEl('btn-cam');
-  if(bm){bm.textContent='🔊 Mute';bm.style.color='';bm.style.borderColor='';}
-  if(bc){bc.textContent='📷 Hide Cam';bc.style.color='';bc.style.borderColor='';}
+  if(bm){bm.textContent='🔊 Mute';bm.style.background='';}
+  if(bc){bc.textContent='📷 Hide Cam';bc.style.background='';}
   updateQualityIndicator('good');
   showIdleUI();
 }
 
 function toggleMute() {
   if(!localStream) return;
-  const track=localStream.getAudioTracks()[0]; if(!track) return;
-  isMuted=!isMuted; track.enabled=!isMuted;
+  const track=localStream.getAudioTracks()[0];if(!track) return;
+  isMuted=!isMuted;track.enabled=!isMuted;
   const btn=getEl('btn-mute');
   btn.textContent=isMuted?'🔇 Unmute':'🔊 Mute';
-  btn.style.color=isMuted?'var(--warn)':''; btn.style.borderColor=isMuted?'var(--warn-border)':'';
+  btn.className=isMuted?'call-btn warn':'call-btn ctrl';
 }
 
 function toggleCamera() {
   if(!localStream) return;
-  const track=localStream.getVideoTracks()[0]; if(!track) return;
-  isCamHidden=!isCamHidden; track.enabled=!isCamHidden;
+  const track=localStream.getVideoTracks()[0];if(!track) return;
+  isCamHidden=!isCamHidden;track.enabled=!isCamHidden;
   const btn=getEl('btn-cam');
   btn.textContent=isCamHidden?'📷 Show Cam':'📷 Hide Cam';
-  btn.style.color=isCamHidden?'var(--warn)':''; btn.style.borderColor=isCamHidden?'var(--warn-border)':'';
-  getEl('local-video').style.opacity=isCamHidden?'0.2':'1';
+  btn.className=isCamHidden?'call-btn ctrl':'call-btn warn';
+  getEl('local-video').style.opacity=isCamHidden?'0.15':'1';
 }
 
-// Flip camera mid-call by replacing the video track
-async function flipCamera() {
-  if (!localStream) return;
-  selectedCamera = selectedCamera === 'rear' ? 'front' : 'rear';
-  try {
-    const newStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: selectedCamera === 'rear' ? 'environment' : 'user' },
-      audio: false
-    });
-    const newTrack = newStream.getVideoTracks()[0];
-    if (peerConnection) {
-      const sender = peerConnection.getSenders().find(s => s.track?.kind === 'video');
-      if (sender) await sender.replaceTrack(newTrack);
-    }
-    const oldTrack = localStream.getVideoTracks()[0];
-    if (oldTrack) { oldTrack.stop(); localStream.removeTrack(oldTrack); }
-    localStream.addTrack(newTrack);
-    getEl('local-video').srcObject = localStream;
-  } catch (err) { showToast('Could not flip camera'); }
-}
-
-// ── UI helpers ────────────────────────────────────────────────
+// ── UI screens ────────────────────────────────────────────────
 function showIdleUI() {
-  getEl('stream-idle-card').style.display='block';
-  getEl('stream-busy-card').style.display='none';
-  getEl('stream-call-card').style.display='none';
-  getEl('stream-controls-card').style.display='none';
+  getEl('card-action').style.display='block';
+  getEl('card-busy').style.display='none';
+  getEl('card-video').style.display='none';
+  getEl('card-controls').style.display='none';
+  getEl('card-settings').style.display='block';
   getEl('stream-notice-text').style.display='block';
+  const btn=getEl('btn-start');
+  btn.textContent='⬤ Start Call';
+  btn.className='call-btn green';
+  btn.onclick=startCall;
 }
 
-function showBusyScreen() {
-  getEl('stream-idle-card').style.display='none';
-  getEl('stream-busy-card').style.display='block';
-  getEl('stream-call-card').style.display='none';
-  getEl('stream-controls-card').style.display='none';
+function showBusy() {
+  getEl('card-action').style.display='none';
+  getEl('card-busy').style.display='block';
+  getEl('card-video').style.display='none';
+  getEl('card-controls').style.display='none';
+  getEl('card-settings').style.display='none';
   getEl('stream-notice-text').style.display='none';
   setStreamStatus('','Call in progress');
 }
 
-function showCallUI() {
-  getEl('stream-idle-card').style.display='none';
-  getEl('stream-busy-card').style.display='none';
-  getEl('stream-call-card').style.display='block';
-  getEl('stream-controls-card').style.display='block';
+function showJoinOption() {
+  getEl('card-action').style.display='block';
+  getEl('card-busy').style.display='none';
+  getEl('card-video').style.display='none';
+  getEl('card-controls').style.display='none';
+  getEl('card-settings').style.display='block';
   getEl('stream-notice-text').style.display='none';
-}
-
-async function showBusyOrJoin(active) {
-  if (!active) { showIdleUI(); return; }
-  if (inCall) return;
-  // Show join option for second user
-  getEl('stream-idle-card').style.display='none';
-  getEl('stream-busy-card').style.display='none';
-  getEl('stream-call-card').style.display='none';
-  getEl('stream-controls-card').style.display='none';
-  // Replace start call button temporarily with join
-  const idleCard = getEl('stream-idle-card');
-  idleCard.style.display='block';
-  const btn=getEl('btn-startcall');
+  const btn=getEl('btn-start');
   btn.textContent='📞 Join Call';
+  btn.className='call-btn blue';
   btn.onclick=joinCall;
-  btn.style.background='var(--blue-dim)';
-  btn.style.borderColor='var(--blue-border)';
-  btn.style.color='var(--blue)';
-  getEl('stream-notice-text').style.display='none';
   setStreamStatus('live','Call in progress — tap to join');
 }
 
-function setStreamUI(mode) {
-  // Legacy — kept for compatibility, actual UI driven by show*UI functions
+function showCallUI() {
+  getEl('card-action').style.display='none';
+  getEl('card-busy').style.display='none';
+  getEl('card-video').style.display='block';
+  getEl('card-controls').style.display='block';
+  getEl('card-settings').style.display='none';
+  getEl('stream-notice-text').style.display='none';
+}
+
+// ── Poll presence ─────────────────────────────────────────────
+async function pollStreamPresence() {
+  if (inCall) return;
+  const active = await checkSessionActive();
+  getEl('tab-stream').classList.toggle('live-dot', active);
+  if (getEl('panel-stream').classList.contains('active')) {
+    if (active) showJoinOption();
+    else showIdleUI();
+  }
+}
+
+async function onStreamTabOpen() {
+  if (inCall) return;
+  const active = await checkSessionActive();
+  if (active) showJoinOption();
+  else showIdleUI();
 }
 
 // ── Media ─────────────────────────────────────────────────────
@@ -1627,6 +1649,8 @@ function init() {
   loadNote();
   loadEntries();
   initSupabaseClient();
+  selectedCamera = localStorage.getItem('mmx_camera') || 'rear';
+  getEl('cam-toggle-btn').textContent = selectedCamera==='rear' ? '📷 Using Rear Camera' : '🤳 Using Front Camera';
   pollStreamPresence();
   initSliders();
   // Return to saved tab after update reload
