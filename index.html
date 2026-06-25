@@ -498,6 +498,7 @@
     </div>
     <div class="card">
       <p class="section-label">Changelog</p>
+      <div class="changelog-entry"><div class="changelog-version">v1.22</div><div class="changelog-desc">Fixed Stream tab not connecting at all — calling code referenced initSupabaseClient(), which had been left undefined during the v1.21 Stream tab rebuild, so the signalling channel never subscribed and both sides waited forever.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.21</div><div class="changelog-desc">Stream tab rebuilt to share code with IPM's CommBadge: same card layout, collapsible Settings panel, camera toggle button (replacing Rear/Front selector), and call logic. Added Wake Lock (keeps screen on during calls), facingMode fallback if the requested camera is unavailable, and automatic video/reconnect recovery when returning from background — none of these had actually made it into Matrix despite being listed as shared fixes. Tap-to-hear-audio prompt added for when iOS blocks remote audio autoplay. Baby tab: moved Pumped under Other (now first), added a new Type row with Breast and Formula buttons, tracked in the log going forward.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.20</div><div class="changelog-desc">Fixed manifest start_url, scope, and app name (was still showing Baby Log) — fixes home screen shortcut 404. Added audio routing fix and stricter audio constraints to Stream tab. Added camera Flip button for mid-call switching, synced from CommBadge.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.19</div><div class="changelog-desc">Rebuilt Stream tab as two-way video call with session chat. Both users send and receive video and audio. Single Start Call button — second user sees Join Call. Busy signal for third users. Data channel chat appears during call, cleared on end. Picture-in-picture local video. End Call button.</div></div>
@@ -525,7 +526,7 @@
       <div class="changelog-entry"><div class="changelog-version">v1.02</div><div class="changelog-desc">First PWA on Netlify with Supabase.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.01</div><div class="changelog-desc">Shared multi-user version with persistent storage.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.00</div><div class="changelog-desc">Initial logging app with Amount, Wet, BM, Pumped and timestamp.</div></div>
-      <div class="version-display">The MurDough Matrix v1.21</div>
+      <div class="version-display">The MurDough Matrix v1.22</div>
     </div>
   </div>
 
@@ -570,6 +571,10 @@ let rtcChannel     = null;
 let peerConnection = null;
 let localStream    = null;
 let isBroadcasting = false;
+
+function initSupabaseClient() {
+  if (!supabaseClient) supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
+}
 let isWatching     = false;
 let selectedCamera = 'rear';
 
