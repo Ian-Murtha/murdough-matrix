@@ -47,6 +47,11 @@
     #mon-dim-overlay.dimmed { opacity: 0.97; pointer-events: auto; }
     .call-btn.ctrl.active-ptt { background: var(--green-dim); border-color: var(--green-border); color: var(--green); }
     .call-btn.ctrl.active-dim { background: var(--blue-dim); border-color: var(--blue-border); color: var(--blue); }
+    .viewer-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); margin-bottom: 6px; }
+    .viewer-row .viewer-label { flex: 1; font-family: var(--mono); font-size: 12px; color: var(--text); }
+    .viewer-row .viewer-talking { color: var(--accent); font-size: 11px; }
+    .viewer-kick-btn { background: var(--danger-dim); border: 1px solid var(--danger-border); color: var(--danger); border-radius: var(--r-sm); padding: 4px 10px; font-family: var(--mono); font-size: 11px; cursor: pointer; }
+    .viewer-kick-btn:hover { background: rgba(240,100,100,0.22); }
 
     main { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.875rem; }
     .panel { display: none; flex-direction: column; gap: 0.875rem; }
@@ -504,6 +509,7 @@
       <div class="ctrl-row">
         <button class="call-btn ctrl" id="mon-btn-mute" onclick="toggleMonitorMic()">🔊 Mic On</button>
       </div>
+      <div id="mon-viewer-list" style="margin-bottom:0.875rem"></div>
       <button class="call-btn danger" onclick="stopMonitor()">&#9632; Stop Monitoring</button>
     </div>
 
@@ -552,6 +558,7 @@
     </div>
     <div class="card">
       <p class="section-label">Changelog</p>
+      <div class="changelog-entry"><div class="changelog-version">v1.25</div><div class="changelog-desc">Baby tab: 24h summary now shows mL totals for Breast and Formula instead of entry counts (an entry only counts toward one or the other if exactly one is checked — ambiguous entries are excluded from both). Monitor tab: added a connected-viewer list with per-viewer disconnect, a live "talking" indicator tied to each viewer's Push to Talk state, and a sound-activated alert — the monitor analyzes its own mic independently of the video call and notifies viewers (vibration, chime, and a system notification if permitted) when sound crosses a threshold for a sustained moment, with a cooldown so continuous crying doesn't spam repeated alerts.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.24</div><div class="changelog-desc">Added Monitor tab — baby-monitor mode, distinct from Stream's two-way call. Anyone opening the tab can start monitoring (broadcasts camera+mic) or, if a monitor is already active, view it. Only one monitor at a time — starting a new one displaces the old. Video flows monitor→viewer only; audio is two-way but only between monitor and each viewer individually (never viewer-to-viewer). Monitor mic defaults on with its own mute toggle; viewer mic defaults off behind a tap-to-toggle Push to Talk button. Includes a disconnect watchdog with an audible chime and a hard-to-miss alert (faster than Stream's reconnect threshold, since a viewer device may be unattended on a nightstand), a night-mode screen dim that keeps audio/connection alive, and a live viewer count shown on the monitor's screen.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.23</div><div class="changelog-desc">Hid the Stream and Media tabs from the tab bar to make room for the upcoming Monitor tab. Code for both is untouched and still fully present in the file — panels, JS, CSS — just not reachable from the UI for this build. Easy to re-enable later.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.22</div><div class="changelog-desc">Fixed Stream tab not connecting at all — calling code referenced initSupabaseClient(), which had been left undefined during the v1.21 Stream tab rebuild, so the signalling channel never subscribed and both sides waited forever.</div></div>
@@ -582,7 +589,7 @@
       <div class="changelog-entry"><div class="changelog-version">v1.02</div><div class="changelog-desc">First PWA on Netlify with Supabase.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.01</div><div class="changelog-desc">Shared multi-user version with persistent storage.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.00</div><div class="changelog-desc">Initial logging app with Amount, Wet, BM, Pumped and timestamp.</div></div>
-      <div class="version-display">The MurDough Matrix v1.24</div>
+      <div class="version-display">The MurDough Matrix v1.25</div>
     </div>
   </div>
 
@@ -905,7 +912,19 @@ function buildSummary() {
   const recent = allEntries.filter(r => r.ts >= cutoff);
   const mlTotal = recent.reduce((sum,r) => { const n=parseFloat(r.amount); return sum+(isNaN(n)?0:n); }, 0);
   getEl('ml-total').textContent = mlTotal>0 ? Math.round(mlTotal)+' mL' : '—';
-  FIELDS.filter(f => f.key!=='pump').forEach(f => { getEl('sum-'+f.key).textContent = recent.filter(r => r[f.dbKey]).length; });
+  FIELDS.filter(f => f.key!=='pump' && f.key!=='breast' && f.key!=='formula').forEach(f => { getEl('sum-'+f.key).textContent = recent.filter(r => r[f.dbKey]).length; });
+  // Breast/Formula: sum mL rather than count entries. Only attribute an entry's
+  // amount to one of the two when exactly one of them is checked — if both or
+  // neither are checked, the split is ambiguous and the entry is excluded from both.
+  let breastMl = 0, formulaMl = 0;
+  recent.forEach(r => {
+    const isBreast = !!r.breast, isFormula = !!r.formula;
+    if (isBreast === isFormula) return; // both or neither — skip
+    const n = parseFloat(r.amount); if (isNaN(n)) return;
+    if (isBreast) breastMl += n; else formulaMl += n;
+  });
+  getEl('sum-breast').textContent  = breastMl>0  ? Math.round(breastMl)+' mL'  : '0 mL';
+  getEl('sum-formula').textContent = formulaMl>0 ? Math.round(formulaMl)+' mL' : '0 mL';
 }
 
 // ── BP ────────────────────────────────────────────────────────
@@ -1599,6 +1618,7 @@ async function startMonitor() {
   monId = genId();
   monPeers = {};
   monMicMuted = false;
+  monNextViewerNum = 1;
 
   const lv = getEl('mon-local-video'); lv.srcObject = monLocalStream; lv.play().catch(()=>{});
 
@@ -1611,10 +1631,12 @@ async function startMonitor() {
   getEl('mon-notice-text').style.display = 'none';
   getEl('mon-btn-mute').textContent = '🔊 Mic On';
   getEl('mon-btn-mute').className = 'call-btn ctrl';
+  getEl('mon-viewer-list').innerHTML = '';
 
   await setMonitorSession({ active:true, monitor_id:monId, viewer_count:0 });
   await setupMonitorChannel();
   startMonitorWatchdog();
+  startSoundAlertAnalyser();
 }
 
 async function setupMonitorChannel() {
@@ -1653,13 +1675,22 @@ async function setupMonitorChannel() {
     updateViewerCountDisplay();
   });
 
+  monChannel.on('broadcast', { event:'viewer-talking' }, ({ payload }) => {
+    if (monRole !== 'monitor') return;
+    const entry = monPeers[payload.viewer_id]; if (!entry) return;
+    entry.talking = !!payload.active;
+    updateViewerCountDisplay();
+  });
+
   return new Promise(resolve => { monChannel.subscribe(status => { if (status==='SUBSCRIBED') resolve(); }); });
 }
+
+let monNextViewerNum = 1;
 
 async function createMonitorPeer(viewerId) {
   if (monPeers[viewerId]) closeMonitorPeer(viewerId);
   const pc = new RTCPeerConnection(RTC_CONFIG);
-  monPeers[viewerId] = { pc, pending:[], remoteSet:false, connected:false };
+  monPeers[viewerId] = { pc, pending:[], remoteSet:false, connected:false, talking:false, num: monNextViewerNum++ };
 
   pc.onicecandidate = ({ candidate }) => {
     if (candidate && monChannel) monChannel.send({ type:'broadcast', event:'ice-candidate', payload:{ viewer_id:viewerId, from:'monitor', candidate } });
@@ -1696,10 +1727,29 @@ function closeMonitorPeer(viewerId) {
   delete monPeers[viewerId];
 }
 
+function kickViewer(viewerId) {
+  if (!monChannel) return;
+  monChannel.send({ type:'broadcast', event:'viewer-kicked', payload:{ viewer_id:viewerId } });
+  closeMonitorPeer(viewerId);
+  updateViewerCountDisplay();
+}
+
 function updateViewerCountDisplay() {
-  const count = Object.values(monPeers).filter(p => p.connected).length;
+  const connected = Object.entries(monPeers).filter(([id,p]) => p.connected);
+  const count = connected.length;
   getEl('mon-viewer-count').textContent = count===1 ? '1 viewer' : count+' viewers';
   setMonitorSession({ viewer_count: count });
+  renderViewerList(connected);
+}
+
+function renderViewerList(connected) {
+  const el = getEl('mon-viewer-list'); if (!el) return;
+  if (!connected || connected.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = connected.map(([id,p]) => `
+    <div class="viewer-row">
+      <span class="viewer-label">Viewer ${p.num}${p.talking ? ' <span class="viewer-talking">&#127908; talking</span>' : ''}</span>
+      <button class="viewer-kick-btn" onclick="kickViewer('${id}')">Disconnect</button>
+    </div>`).join('');
 }
 
 function toggleMonitorMic() {
@@ -1729,6 +1779,7 @@ function stopMonitor(displaced) {
   if (monChannel) { monChannel.send({ type:'broadcast', event:'monitor-ended', payload:{} }); monChannel.unsubscribe(); monChannel = null; }
   Object.keys(monPeers).forEach(closeMonitorPeer);
   monPeers = {};
+  stopSoundAlertAnalyser();
   if (monLocalStream) { monLocalStream.getTracks().forEach(t=>t.stop()); monLocalStream = null; }
   if (monDisconnectTimer) { clearInterval(monDisconnectTimer); monDisconnectTimer = null; }
   if (!displaced) setMonitorSession({ active:false, monitor_id:null, viewer_count:0 });
@@ -1767,6 +1818,11 @@ async function startViewing() {
     monLocalStream = null; // mic denied — viewing still works, push-to-talk just won't
   }
 
+  // Best-effort: lets sound alerts show as a system notification, not required.
+  if (window.Notification && Notification.permission === 'default') {
+    try { Notification.requestPermission(); } catch(e){}
+  }
+
   await joinMonitorChannel(monitorId);
   startViewerWatchdog();
 }
@@ -1798,6 +1854,17 @@ async function joinMonitorChannel(monitorId) {
     if (monRole !== 'viewer') return;
     showToast('Monitor ended');
     stopViewing();
+  });
+
+  monChannel.on('broadcast', { event:'viewer-kicked' }, ({ payload }) => {
+    if (monRole !== 'viewer' || payload.viewer_id !== monViewerId) return;
+    showToast('Disconnected by monitor');
+    stopViewing();
+  });
+
+  monChannel.on('broadcast', { event:'sound-alert' }, () => {
+    if (monRole !== 'viewer') return;
+    handleSoundAlert();
   });
 
   await new Promise(resolve => { monChannel.subscribe(status => { if (status==='SUBSCRIBED') resolve(); }); });
@@ -1851,6 +1918,7 @@ function togglePushToTalk() {
   const btn = getEl('mon-btn-ptt');
   btn.textContent = monPttActive ? '🎙️ Talking…' : '🎙️ Push to Talk';
   btn.className = monPttActive ? 'call-btn ctrl active-ptt' : 'call-btn ctrl';
+  if (monChannel) monChannel.send({ type:'broadcast', event:'viewer-talking', payload:{ viewer_id:monViewerId, active:monPttActive } });
 }
 
 function toggleNightMode() {
@@ -1889,6 +1957,74 @@ function playDisconnectChime() {
     g.gain.setValueAtTime(0.15, ctx.currentTime);
     o.start(); o.stop(ctx.currentTime + 0.25);
   } catch (e) {}
+}
+
+// ── Sound-activated alert ────────────────────────────────────
+// Runs on the monitor device, analyzing its own mic input independently of
+// the WebRTC media stream. When volume crosses a threshold for a sustained
+// period, broadcasts a lightweight alert event so viewers get a notification
+// even if they're not actively watching the screen. A cooldown prevents
+// spamming repeated alerts during continuous crying.
+const SOUND_ALERT_THRESHOLD   = 35;   // 0-100 scale
+const SOUND_ALERT_SUSTAIN_MS  = 800;  // must stay above threshold this long to trigger
+const SOUND_ALERT_COOLDOWN_MS = 15000; // minimum time between alerts
+
+let monAudioCtx = null, monAnalyser = null, monAnalyserSource = null, monAnalyserRAF = null;
+let monSoundAboveSince = null, monLastAlertAt = 0;
+
+function startSoundAlertAnalyser() {
+  if (!monLocalStream) return;
+  try {
+    monAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    monAnalyserSource = monAudioCtx.createMediaStreamSource(monLocalStream);
+    monAnalyser = monAudioCtx.createAnalyser();
+    monAnalyser.fftSize = 512;
+    monAnalyserSource.connect(monAnalyser);
+    monSoundAboveSince = null;
+    monLastAlertAt = 0;
+    monitorSoundLevel();
+  } catch (e) {} // analyser is a nice-to-have; never block monitoring if it fails
+}
+
+function monitorSoundLevel() {
+  if (!monAnalyser || monRole !== 'monitor') return;
+  const data = new Uint8Array(monAnalyser.frequencyBinCount);
+  monAnalyser.getByteTimeDomainData(data);
+  // RMS deviation from the midline (128), scaled to roughly 0-100.
+  let sumSq = 0;
+  for (let i = 0; i < data.length; i++) { const d = data[i] - 128; sumSq += d * d; }
+  const rms = Math.sqrt(sumSq / data.length);
+  const level = Math.min(100, Math.round((rms / 40) * 100));
+
+  const now = Date.now();
+  if (level >= SOUND_ALERT_THRESHOLD) {
+    if (!monSoundAboveSince) monSoundAboveSince = now;
+    if (now - monSoundAboveSince >= SOUND_ALERT_SUSTAIN_MS && now - monLastAlertAt >= SOUND_ALERT_COOLDOWN_MS) {
+      monLastAlertAt = now;
+      if (monChannel) monChannel.send({ type:'broadcast', event:'sound-alert', payload:{} });
+    }
+  } else {
+    monSoundAboveSince = null;
+  }
+
+  monAnalyserRAF = requestAnimationFrame(monitorSoundLevel);
+}
+
+function stopSoundAlertAnalyser() {
+  if (monAnalyserRAF) { cancelAnimationFrame(monAnalyserRAF); monAnalyserRAF = null; }
+  if (monAnalyserSource) { try { monAnalyserSource.disconnect(); } catch(e){} monAnalyserSource = null; }
+  if (monAudioCtx) { try { monAudioCtx.close(); } catch(e){} monAudioCtx = null; }
+  monAnalyser = null; monSoundAboveSince = null;
+}
+
+// Viewer side: receive the alert and notify even if the screen is dimmed/backgrounded.
+function handleSoundAlert() {
+  vibrate();
+  playDisconnectChime(); // reuse the same audible cue; distinct enough in context
+  showToast('🔊 Sound detected on monitor');
+  if (window.Notification && Notification.permission === 'granted') {
+    try { new Notification('Sound detected', { body:'The baby monitor picked up sound.' }); } catch(e){}
+  }
 }
 
 function startViewerWatchdog() {
