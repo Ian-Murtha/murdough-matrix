@@ -40,6 +40,13 @@
     .tab { flex: 1; min-width: 0; padding: 8px 2px; border: none; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; border-radius: 6px; transition: background 0.15s, color 0.15s; white-space: nowrap; }
     .tab.active { background: var(--surface2); color: var(--text); }
     .tab.live-dot::after { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--danger); margin-left: 4px; vertical-align: middle; }
+    .tab-hidden { display: none !important; }
+
+    /* Monitor night mode */
+    #mon-dim-overlay { transition: opacity 0.3s; opacity: 0; pointer-events: none; }
+    #mon-dim-overlay.dimmed { opacity: 0.97; pointer-events: auto; }
+    .call-btn.ctrl.active-ptt { background: var(--green-dim); border-color: var(--green-border); color: var(--green); }
+    .call-btn.ctrl.active-dim { background: var(--blue-dim); border-color: var(--blue-border); color: var(--blue); }
 
     main { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.875rem; }
     .panel { display: none; flex-direction: column; gap: 0.875rem; }
@@ -289,8 +296,9 @@
   <div class="tabs">
     <button class="tab active" onclick="switchTab('baby')">Baby</button>
     <button class="tab" onclick="switchTab('bp')">BP</button>
-    <button class="tab" onclick="switchTab('stream')" id="tab-stream">Stream</button>
-    <button class="tab" onclick="switchTab('media')">Media</button>
+    <button class="tab" onclick="switchTab('monitor')" id="tab-monitor">Monitor</button>
+    <button class="tab tab-hidden" onclick="switchTab('stream')" id="tab-stream">Stream</button>
+    <button class="tab tab-hidden" onclick="switchTab('media')">Media</button>
     <button class="tab" onclick="switchTab('weather')">Weather</button>
     <button class="tab" onclick="switchTab('settings')">Settings</button>
   </div>
@@ -473,6 +481,52 @@
     </div>
   </div>
 
+  <!-- ══ MONITOR TAB ══ -->
+  <div class="panel" id="panel-monitor">
+    <div class="stream-status-bar">
+      <span class="stream-dot" id="mon-dot"></span>
+      <span id="mon-status-text">No monitor active</span>
+      <span id="mon-viewer-count" style="margin-left:auto;font-size:11px;font-family:var(--mono);color:var(--muted)"></span>
+    </div>
+
+    <!-- Idle: choose role -->
+    <div class="card" id="mon-card-idle">
+      <button class="call-btn green" id="mon-btn-start" onclick="startMonitor()">&#128247; Start Monitoring</button>
+    </div>
+
+    <!-- Monitor (broadcaster) screen -->
+    <div class="card" style="padding:0;overflow:hidden;display:none" id="mon-card-broadcast">
+      <div class="call-video-wrap" style="aspect-ratio:4/3">
+        <video id="mon-local-video" autoplay muted playsinline style="width:100%;height:100%;object-fit:cover"></video>
+      </div>
+    </div>
+    <div class="card" style="display:none" id="mon-card-broadcast-controls">
+      <div class="ctrl-row">
+        <button class="call-btn ctrl" id="mon-btn-mute" onclick="toggleMonitorMic()">🔊 Mic On</button>
+      </div>
+      <button class="call-btn danger" onclick="stopMonitor()">&#9632; Stop Monitoring</button>
+    </div>
+
+    <!-- Viewer screen -->
+    <div class="card" style="padding:0;overflow:hidden;display:none" id="mon-card-viewer">
+      <div class="call-video-wrap" style="aspect-ratio:4/3" id="mon-viewer-video-wrap">
+        <video id="mon-remote-video" autoplay playsinline></video>
+        <div class="no-stream" id="mon-no-stream-msg">Connecting…</div>
+        <div id="mon-tap-audio-prompt" style="display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);border:1px solid rgba(255,255,255,0.2);border-radius:999px;padding:6px 16px;font-family:var(--mono);font-size:11px;color:#fff;cursor:pointer;z-index:5;white-space:nowrap" onclick="dismissMonitorAudioPrompt()">▶ Tap to hear audio</div>
+        <div id="mon-dim-overlay" style="display:none;position:absolute;inset:0;background:#000;z-index:10;cursor:pointer" onclick="toggleNightMode()"></div>
+      </div>
+    </div>
+    <div class="card" style="display:none" id="mon-card-viewer-controls">
+      <div class="ctrl-row">
+        <button class="call-btn ctrl" id="mon-btn-ptt" onclick="togglePushToTalk()">🎙️ Push to Talk</button>
+        <button class="call-btn ctrl" id="mon-btn-dim" onclick="toggleNightMode()">🌙 Night Mode</button>
+      </div>
+      <button class="call-btn danger" onclick="stopViewing()">&#9632; Stop Viewing</button>
+    </div>
+
+    <p class="stream-notice" id="mon-notice-text">Open this tab on any device to start monitoring, or view an active monitor.</p>
+  </div>
+
   <!-- ══ WEATHER TAB ══ -->
   <div class="panel" id="panel-weather">
     <div class="card">
@@ -498,6 +552,8 @@
     </div>
     <div class="card">
       <p class="section-label">Changelog</p>
+      <div class="changelog-entry"><div class="changelog-version">v1.24</div><div class="changelog-desc">Added Monitor tab — baby-monitor mode, distinct from Stream's two-way call. Anyone opening the tab can start monitoring (broadcasts camera+mic) or, if a monitor is already active, view it. Only one monitor at a time — starting a new one displaces the old. Video flows monitor→viewer only; audio is two-way but only between monitor and each viewer individually (never viewer-to-viewer). Monitor mic defaults on with its own mute toggle; viewer mic defaults off behind a tap-to-toggle Push to Talk button. Includes a disconnect watchdog with an audible chime and a hard-to-miss alert (faster than Stream's reconnect threshold, since a viewer device may be unattended on a nightstand), a night-mode screen dim that keeps audio/connection alive, and a live viewer count shown on the monitor's screen.</div></div>
+      <div class="changelog-entry"><div class="changelog-version">v1.23</div><div class="changelog-desc">Hid the Stream and Media tabs from the tab bar to make room for the upcoming Monitor tab. Code for both is untouched and still fully present in the file — panels, JS, CSS — just not reachable from the UI for this build. Easy to re-enable later.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.22</div><div class="changelog-desc">Fixed Stream tab not connecting at all — calling code referenced initSupabaseClient(), which had been left undefined during the v1.21 Stream tab rebuild, so the signalling channel never subscribed and both sides waited forever.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.21</div><div class="changelog-desc">Stream tab rebuilt to share code with IPM's CommBadge: same card layout, collapsible Settings panel, camera toggle button (replacing Rear/Front selector), and call logic. Added Wake Lock (keeps screen on during calls), facingMode fallback if the requested camera is unavailable, and automatic video/reconnect recovery when returning from background — none of these had actually made it into Matrix despite being listed as shared fixes. Tap-to-hear-audio prompt added for when iOS blocks remote audio autoplay. Baby tab: moved Pumped under Other (now first), added a new Type row with Breast and Formula buttons, tracked in the log going forward.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.20</div><div class="changelog-desc">Fixed manifest start_url, scope, and app name (was still showing Baby Log) — fixes home screen shortcut 404. Added audio routing fix and stricter audio constraints to Stream tab. Added camera Flip button for mid-call switching, synced from CommBadge.</div></div>
@@ -526,7 +582,7 @@
       <div class="changelog-entry"><div class="changelog-version">v1.02</div><div class="changelog-desc">First PWA on Netlify with Supabase.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.01</div><div class="changelog-desc">Shared multi-user version with persistent storage.</div></div>
       <div class="changelog-entry"><div class="changelog-version">v1.00</div><div class="changelog-desc">Initial logging app with Amount, Wet, BM, Pumped and timestamp.</div></div>
-      <div class="version-display">The MurDough Matrix v1.22</div>
+      <div class="version-display">The MurDough Matrix v1.24</div>
     </div>
   </div>
 
@@ -680,7 +736,7 @@ function resetForm() {
 }
 
 function switchTab(name) {
-  const names = ['baby','bp','stream','media','weather','settings'];
+  const names = ['baby','bp','monitor','stream','media','weather','settings'];
   document.querySelectorAll('.tab').forEach((btn,i) => btn.classList.toggle('active', names[i]===name));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   getEl('panel-'+name).classList.add('active');
@@ -688,6 +744,7 @@ function switchTab(name) {
   if (name==='bp')      loadBP();
   if (name==='media')   loadMedia();
   if (name==='stream')  onStreamTabOpen();
+  if (name==='monitor') onMonitorTabOpen();
 }
 
 // ── Supabase REST ────────────────────────────────────────────
@@ -1457,6 +1514,416 @@ async function onStreamTabOpen() {
   else showIdleUI();
 }
 
+// ── Monitor: one-to-many baby monitor ───────────────────────────
+// Reuses Stream's RTC_CONFIG, quality helpers, restoreAudioOutput.
+const MONITOR_DISCONNECT_GRACE_MS = 6000; // alert sooner than Stream's reconnect threshold
+
+let monRole = null;            // 'monitor' | 'viewer' | null
+let monId = null;              // this device's monitor_id when broadcasting
+let monViewerId = null;        // this device's own viewer_id when viewing
+let monChannel = null;
+let monLocalStream = null;
+let monPeers = {};             // viewerId -> RTCPeerConnection (monitor side)
+let monPeerConn = null;        // viewer side's single connection to the monitor
+let monPollTimer = null;
+let monPttActive = false;
+let monMicMuted = false;
+let monNightMode = false;
+let monDisconnectTimer = null;
+let monLastKnownMonitorId = null;
+
+function genId() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+
+async function checkMonitorActive() {
+  try {
+    const rows = await sbFetch('monitor_session?order=id.asc&limit=1');
+    if (rows && rows.length) return { active: rows[0].active === true, monitorId: rows[0].monitor_id, viewerCount: rows[0].viewer_count || 0 };
+  } catch (err) {}
+  return { active: false, monitorId: null, viewerCount: 0 };
+}
+
+async function setMonitorSession(fields) {
+  try {
+    const rows = await sbFetch('monitor_session?order=id.asc&limit=1');
+    if (rows && rows.length) {
+      await sbFetch(`monitor_session?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({...fields, updated_at:new Date().toISOString()}) });
+    }
+  } catch (err) {}
+}
+
+// ── Idle / role selection ────────────────────────────────────
+async function pollMonitorPresence() {
+  if (monRole) return; // already broadcasting or viewing — handled by its own logic
+  const { active } = await checkMonitorActive();
+  getEl('tab-monitor').classList.toggle('live-dot', active);
+  if (getEl('panel-monitor').classList.contains('active')) {
+    showMonitorIdle(active);
+  }
+}
+
+async function onMonitorTabOpen() {
+  if (monRole) return;
+  const { active } = await checkMonitorActive();
+  showMonitorIdle(active);
+}
+
+function showMonitorIdle(monitorActive) {
+  getEl('mon-card-idle').style.display = 'block';
+  getEl('mon-card-broadcast').style.display = 'none';
+  getEl('mon-card-broadcast-controls').style.display = 'none';
+  getEl('mon-card-viewer').style.display = 'none';
+  getEl('mon-card-viewer-controls').style.display = 'none';
+  getEl('mon-viewer-count').textContent = '';
+  const btn = getEl('mon-btn-start');
+  if (monitorActive) {
+    btn.textContent = '👀 View Monitor';
+    btn.className = 'call-btn blue';
+    btn.onclick = startViewing;
+    getEl('mon-status-text').textContent = 'Monitor active — tap to view';
+    getEl('mon-dot').className = 'stream-dot live';
+  } else {
+    btn.textContent = '📷 Start Monitoring';
+    btn.className = 'call-btn green';
+    btn.onclick = startMonitor;
+    getEl('mon-status-text').textContent = 'No monitor active';
+    getEl('mon-dot').className = 'stream-dot';
+  }
+}
+
+// ── Monitor (broadcaster) role ───────────────────────────────
+async function startMonitor() {
+  try { monLocalStream = await getLocalStream(); }
+  catch (err) { showToast('Camera/mic access denied'); return; }
+
+  monRole = 'monitor';
+  monId = genId();
+  monPeers = {};
+  monMicMuted = false;
+
+  const lv = getEl('mon-local-video'); lv.srcObject = monLocalStream; lv.play().catch(()=>{});
+
+  getEl('mon-card-idle').style.display = 'none';
+  getEl('mon-card-broadcast').style.display = 'block';
+  getEl('mon-card-broadcast-controls').style.display = 'block';
+  getEl('mon-status-text').textContent = 'Broadcasting';
+  getEl('mon-status-text').style.color = '';
+  getEl('mon-dot').className = 'stream-dot live';
+  getEl('mon-notice-text').style.display = 'none';
+  getEl('mon-btn-mute').textContent = '🔊 Mic On';
+  getEl('mon-btn-mute').className = 'call-btn ctrl';
+
+  await setMonitorSession({ active:true, monitor_id:monId, viewer_count:0 });
+  await setupMonitorChannel();
+  startMonitorWatchdog();
+}
+
+async function setupMonitorChannel() {
+  initSupabaseClient();
+  if (monChannel) { monChannel.unsubscribe(); monChannel = null; }
+  monChannel = supabaseClient.channel('monitor-'+monId, { config:{ broadcast:{ self:false } } });
+
+  monChannel.on('broadcast', { event:'viewer-join' }, async ({ payload }) => {
+    if (monRole !== 'monitor') return;
+    await createMonitorPeer(payload.viewer_id);
+    await sendMonitorOffer(payload.viewer_id);
+    updateViewerCountDisplay();
+  });
+
+  monChannel.on('broadcast', { event:'answer' }, async ({ payload }) => {
+    if (monRole !== 'monitor') return;
+    const pc = monPeers[payload.viewer_id]?.pc; if (!pc) return;
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+      monPeers[payload.viewer_id].remoteSet = true;
+      for (const c of monPeers[payload.viewer_id].pending) { try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e){} }
+      monPeers[payload.viewer_id].pending = [];
+    } catch (err) {}
+  });
+
+  monChannel.on('broadcast', { event:'ice-candidate' }, async ({ payload }) => {
+    if (monRole !== 'monitor' || payload.from !== 'viewer') return;
+    const entry = monPeers[payload.viewer_id]; if (!entry) return;
+    if (!entry.remoteSet) entry.pending.push(payload.candidate);
+    else { try { await entry.pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch(e){} }
+  });
+
+  monChannel.on('broadcast', { event:'viewer-left' }, ({ payload }) => {
+    if (monRole !== 'monitor') return;
+    closeMonitorPeer(payload.viewer_id);
+    updateViewerCountDisplay();
+  });
+
+  return new Promise(resolve => { monChannel.subscribe(status => { if (status==='SUBSCRIBED') resolve(); }); });
+}
+
+async function createMonitorPeer(viewerId) {
+  if (monPeers[viewerId]) closeMonitorPeer(viewerId);
+  const pc = new RTCPeerConnection(RTC_CONFIG);
+  monPeers[viewerId] = { pc, pending:[], remoteSet:false, connected:false };
+
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate && monChannel) monChannel.send({ type:'broadcast', event:'ice-candidate', payload:{ viewer_id:viewerId, from:'monitor', candidate } });
+  };
+  pc.onconnectionstatechange = () => {
+    const entry = monPeers[viewerId]; if (!entry) return;
+    if (pc.connectionState === 'connected') { entry.connected = true; updateViewerCountDisplay(); }
+    else if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { closeMonitorPeer(viewerId); updateViewerCountDisplay(); }
+  };
+  // Monitor never receives video back, but viewer's audio track arrives here.
+  pc.ontrack = ({ streams }) => {
+    const entry = monPeers[viewerId]; if (!entry) return;
+    entry.audioEl = entry.audioEl || new Audio();
+    entry.audioEl.srcObject = streams[0];
+    entry.audioEl.autoplay = true;
+    entry.audioEl.play().catch(()=>{});
+  };
+
+  if (monLocalStream) monLocalStream.getTracks().forEach(t => pc.addTrack(t, monLocalStream));
+}
+
+async function sendMonitorOffer(viewerId) {
+  const entry = monPeers[viewerId]; if (!entry) return;
+  entry.remoteSet = false; entry.pending = [];
+  const offer = await entry.pc.createOffer();
+  await entry.pc.setLocalDescription(offer);
+  monChannel.send({ type:'broadcast', event:'offer', payload:{ viewer_id:viewerId, sdp:offer } });
+}
+
+function closeMonitorPeer(viewerId) {
+  const entry = monPeers[viewerId]; if (!entry) return;
+  try { entry.pc.close(); } catch(e){}
+  if (entry.audioEl) { try { entry.audioEl.pause(); entry.audioEl.srcObject = null; } catch(e){} }
+  delete monPeers[viewerId];
+}
+
+function updateViewerCountDisplay() {
+  const count = Object.values(monPeers).filter(p => p.connected).length;
+  getEl('mon-viewer-count').textContent = count===1 ? '1 viewer' : count+' viewers';
+  setMonitorSession({ viewer_count: count });
+}
+
+function toggleMonitorMic() {
+  if (!monLocalStream) return;
+  const track = monLocalStream.getAudioTracks()[0]; if (!track) return;
+  monMicMuted = !monMicMuted; track.enabled = !monMicMuted;
+  const btn = getEl('mon-btn-mute');
+  btn.textContent = monMicMuted ? '🔇 Mic Off' : '🔊 Mic On';
+  btn.className = monMicMuted ? 'call-btn warn' : 'call-btn ctrl';
+}
+
+function startMonitorWatchdog() {
+  if (monDisconnectTimer) clearInterval(monDisconnectTimer);
+  // Re-assert presence row periodically in case it gets overwritten by a race;
+  // also detect if we've been displaced (shouldn't happen while we're 'monitor', but guards against stale state).
+  monDisconnectTimer = setInterval(async () => {
+    if (monRole !== 'monitor') return;
+    const { monitorId } = await checkMonitorActive();
+    if (monitorId && monitorId !== monId) {
+      // Someone else's monitor_id is now active and it's not us — we were displaced.
+      stopMonitor(true);
+    }
+  }, 5000);
+}
+
+function stopMonitor(displaced) {
+  if (monChannel) { monChannel.send({ type:'broadcast', event:'monitor-ended', payload:{} }); monChannel.unsubscribe(); monChannel = null; }
+  Object.keys(monPeers).forEach(closeMonitorPeer);
+  monPeers = {};
+  if (monLocalStream) { monLocalStream.getTracks().forEach(t=>t.stop()); monLocalStream = null; }
+  if (monDisconnectTimer) { clearInterval(monDisconnectTimer); monDisconnectTimer = null; }
+  if (!displaced) setMonitorSession({ active:false, monitor_id:null, viewer_count:0 });
+  monRole = null; monId = null;
+  if (displaced) showToast('Another device started monitoring');
+  showMonitorIdle(false);
+  pollMonitorPresence();
+}
+
+// ── Viewer role ───────────────────────────────────────────────
+async function startViewing() {
+  const { active, monitorId } = await checkMonitorActive();
+  if (!active || !monitorId) { showToast('No monitor active'); showMonitorIdle(false); return; }
+
+  monRole = 'viewer';
+  monViewerId = genId();
+  monLastKnownMonitorId = monitorId;
+  monPttActive = false;
+
+  getEl('mon-card-idle').style.display = 'none';
+  getEl('mon-card-viewer').style.display = 'block';
+  getEl('mon-card-viewer-controls').style.display = 'block';
+  getEl('mon-notice-text').style.display = 'none';
+  getEl('mon-status-text').textContent = 'Connecting…';
+  getEl('mon-dot').className = 'stream-dot connecting';
+  getEl('mon-no-stream-msg').style.display = 'flex';
+  getEl('mon-btn-ptt').textContent = '🎙️ Push to Talk';
+  getEl('mon-btn-ptt').className = 'call-btn ctrl';
+
+  try {
+    // Viewer only needs a mic; no camera requested at all.
+    const micStream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true } });
+    micStream.getAudioTracks().forEach(t => t.enabled = false); // PTT off by default
+    monLocalStream = micStream;
+  } catch (err) {
+    monLocalStream = null; // mic denied — viewing still works, push-to-talk just won't
+  }
+
+  await joinMonitorChannel(monitorId);
+  startViewerWatchdog();
+}
+
+async function joinMonitorChannel(monitorId) {
+  initSupabaseClient();
+  if (monChannel) { monChannel.unsubscribe(); monChannel = null; }
+  monChannel = supabaseClient.channel('monitor-'+monitorId, { config:{ broadcast:{ self:false } } });
+
+  monChannel.on('broadcast', { event:'offer' }, async ({ payload }) => {
+    if (monRole !== 'viewer' || payload.viewer_id !== monViewerId) return;
+    if (!monPeerConn) await createViewerPeer();
+    await monPeerConn.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+    monViewerRemoteSet = true;
+    for (const c of monViewerPending) { try { await monPeerConn.addIceCandidate(new RTCIceCandidate(c)); } catch(e){} }
+    monViewerPending = [];
+    const answer = await monPeerConn.createAnswer();
+    await monPeerConn.setLocalDescription(answer);
+    monChannel.send({ type:'broadcast', event:'answer', payload:{ viewer_id:monViewerId, sdp:answer } });
+  });
+
+  monChannel.on('broadcast', { event:'ice-candidate' }, async ({ payload }) => {
+    if (monRole !== 'viewer' || payload.viewer_id !== monViewerId || payload.from !== 'monitor') return;
+    if (!monPeerConn || !monViewerRemoteSet) monViewerPending.push(payload.candidate);
+    else { try { await monPeerConn.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch(e){} }
+  });
+
+  monChannel.on('broadcast', { event:'monitor-ended' }, () => {
+    if (monRole !== 'viewer') return;
+    showToast('Monitor ended');
+    stopViewing();
+  });
+
+  await new Promise(resolve => { monChannel.subscribe(status => { if (status==='SUBSCRIBED') resolve(); }); });
+  monChannel.send({ type:'broadcast', event:'viewer-join', payload:{ viewer_id:monViewerId } });
+}
+
+let monViewerRemoteSet = false;
+let monViewerPending = [];
+
+async function createViewerPeer() {
+  monPeerConn = new RTCPeerConnection(RTC_CONFIG);
+  monViewerRemoteSet = false; monViewerPending = [];
+
+  monPeerConn.onicecandidate = ({ candidate }) => {
+    if (candidate && monChannel) monChannel.send({ type:'broadcast', event:'ice-candidate', payload:{ viewer_id:monViewerId, from:'viewer', candidate } });
+  };
+  monPeerConn.onconnectionstatechange = () => {
+    if (monRole !== 'viewer') return;
+    const state = monPeerConn?.connectionState;
+    if (state === 'connected') {
+      getEl('mon-status-text').textContent = 'Viewing';
+      getEl('mon-dot').className = 'stream-dot watching';
+      getEl('mon-no-stream-msg').style.display = 'none';
+      restoreAudioOutput();
+      clearMonitorDisconnectAlert();
+      requestWakeLock();
+    } else if (state === 'disconnected' || state === 'failed') {
+      flagMonitorDisconnect();
+    }
+  };
+  monPeerConn.ontrack = ({ streams }) => {
+    const rv = getEl('mon-remote-video');
+    rv.srcObject = streams[0];
+    rv.play().catch(() => { showMonitorAudioPrompt(); });
+    restoreAudioOutput();
+    getEl('mon-no-stream-msg').style.display = 'none';
+  };
+  if (monLocalStream) monLocalStream.getTracks().forEach(t => monPeerConn.addTrack(t, monLocalStream));
+}
+
+function showMonitorAudioPrompt() { const p=getEl('mon-tap-audio-prompt'); if(p) p.style.display='block'; }
+function dismissMonitorAudioPrompt() {
+  const rv=getEl('mon-remote-video'); if(rv) rv.play().catch(()=>{});
+  const p=getEl('mon-tap-audio-prompt'); if(p) p.style.display='none';
+}
+
+function togglePushToTalk() {
+  if (!monLocalStream) { showToast('Microphone not available'); return; }
+  const track = monLocalStream.getAudioTracks()[0]; if (!track) return;
+  monPttActive = !monPttActive; track.enabled = monPttActive;
+  const btn = getEl('mon-btn-ptt');
+  btn.textContent = monPttActive ? '🎙️ Talking…' : '🎙️ Push to Talk';
+  btn.className = monPttActive ? 'call-btn ctrl active-ptt' : 'call-btn ctrl';
+}
+
+function toggleNightMode() {
+  monNightMode = !monNightMode;
+  getEl('mon-dim-overlay').classList.toggle('dimmed', monNightMode);
+  const btn = getEl('mon-btn-dim');
+  btn.textContent = monNightMode ? '☀️ Tap screen to undim' : '🌙 Night Mode';
+  btn.className = monNightMode ? 'call-btn ctrl active-dim' : 'call-btn ctrl';
+}
+
+// ── Viewer disconnect watchdog ───────────────────────────────
+// Faster + louder than Stream's reconnect, since a viewer device may be
+// unattended on a nightstand and a silent drop would go unnoticed.
+function flagMonitorDisconnect() {
+  if (monDisconnectTimer) return; // already flagged
+  getEl('mon-status-text').textContent = '⚠ Disconnected — reconnecting…';
+  getEl('mon-status-text').style.color = 'var(--danger)';
+  getEl('mon-dot').className = 'stream-dot';
+  playDisconnectChime();
+  monDisconnectTimer = setTimeout(() => {
+    // Still not recovered after grace period — try a fresh join.
+    if (monRole === 'viewer') { stopViewing(); startViewing(); }
+  }, MONITOR_DISCONNECT_GRACE_MS);
+}
+
+function clearMonitorDisconnectAlert() {
+  if (monDisconnectTimer) { clearTimeout(monDisconnectTimer); monDisconnectTimer = null; }
+  getEl('mon-status-text').style.color = '';
+}
+
+function playDisconnectChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.15, ctx.currentTime);
+    o.start(); o.stop(ctx.currentTime + 0.25);
+  } catch (e) {}
+}
+
+function startViewerWatchdog() {
+  if (monPollTimer) clearInterval(monPollTimer);
+  monPollTimer = setInterval(async () => {
+    if (monRole !== 'viewer') return;
+    const { active, monitorId } = await checkMonitorActive();
+    if (!active) { showToast('Monitor ended'); stopViewing(); return; }
+    if (monitorId && monitorId !== monLastKnownMonitorId) {
+      // Handoff to a new monitor — rejoin against the new session.
+      monLastKnownMonitorId = monitorId;
+      showToast('Switched to new monitor');
+      if (monChannel) { monChannel.unsubscribe(); monChannel = null; }
+      if (monPeerConn) { monPeerConn.close(); monPeerConn = null; }
+      getEl('mon-no-stream-msg').style.display = 'flex';
+      await joinMonitorChannel(monitorId);
+    }
+  }, 4000);
+}
+
+function stopViewing() {
+  if (monChannel) { monChannel.send({ type:'broadcast', event:'viewer-left', payload:{ viewer_id:monViewerId } }); monChannel.unsubscribe(); monChannel = null; }
+  if (monPeerConn) { monPeerConn.close(); monPeerConn = null; }
+  if (monLocalStream) { monLocalStream.getTracks().forEach(t=>t.stop()); monLocalStream = null; }
+  if (monPollTimer) { clearInterval(monPollTimer); monPollTimer = null; }
+  clearMonitorDisconnectAlert();
+  releaseWakeLock();
+  const rv = getEl('mon-remote-video'); if (rv) rv.srcObject = null;
+  const prompt = getEl('mon-tap-audio-prompt'); if (prompt) prompt.style.display = 'none';
+  if (monNightMode) toggleNightMode();
+  monRole = null; monViewerId = null; monPttActive = false;
+  showMonitorIdle(false);
+  pollMonitorPresence();
+}
+
 // ── Media ─────────────────────────────────────────────────────
 async function loadMedia() {
   try {
@@ -1657,6 +2124,7 @@ function init() {
   selectedCamera = localStorage.getItem('mmx_camera') || 'rear';
   getEl('cam-toggle-btn').textContent = selectedCamera==='rear' ? '📷 Using Rear Camera' : '🤳 Using Front Camera';
   pollStreamPresence();
+  pollMonitorPresence();
   initSliders();
   // Return to saved tab after update reload
   const returnTab = localStorage.getItem('mmx_return_tab');
@@ -1670,6 +2138,7 @@ setInterval(() => { if (allEntries.length) updateLastBar(allEntries); }, 60000);
 setInterval(loadEntries, 30000);
 setInterval(loadNote, 30000);
 setInterval(pollStreamPresence, 15000);
+setInterval(pollMonitorPresence, 15000);
 init();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
