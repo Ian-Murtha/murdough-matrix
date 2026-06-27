@@ -854,9 +854,20 @@ function updateLastBar(rows) {
   if (rows.length) getEl('since-text').textContent = timeSince(rows[0].ts);
 }
 
+function rollingWindowPlusOne(rows) {
+  // rows must be sorted ts.desc. Returns in-window entries plus the single
+  // next-oldest entry past the cutoff, if one exists — folded in uniformly,
+  // no distinction made anywhere downstream.
+  const cutoff = rollingCutoff();
+  const inWindow = [];
+  let i = 0;
+  for (; i < rows.length && rows[i].ts >= cutoff; i++) inWindow.push(rows[i]);
+  if (i < rows.length) inWindow.push(rows[i]);
+  return inWindow;
+}
+
 function renderList(rows) {
-  const cutoff   = rollingCutoff();
-  const filtered = rows.filter(r => r.ts >= cutoff);
+  const filtered = rollingWindowPlusOne(rows);
   getEl('entry-count').textContent = filtered.length+(filtered.length===1?' entry':' entries');
   if (!filtered.length) { getEl('log-body').innerHTML='<div class="empty-state">No entries in the past 24 hours</div>'; return; }
   getEl('log-body').innerHTML = filtered.map(row => {
@@ -908,8 +919,7 @@ async function saveEdit() {
 }
 
 function buildSummary() {
-  const cutoff = rollingCutoff();
-  const recent = allEntries.filter(r => r.ts >= cutoff);
+  const recent = rollingWindowPlusOne(allEntries);
   const mlTotal = recent.reduce((sum,r) => { const n=parseFloat(r.amount); return sum+(isNaN(n)?0:n); }, 0);
   getEl('ml-total').textContent = mlTotal>0 ? Math.round(mlTotal)+' mL' : '—';
   FIELDS.filter(f => f.key!=='pump' && f.key!=='breast' && f.key!=='formula').forEach(f => { getEl('sum-'+f.key).textContent = recent.filter(r => r[f.dbKey]).length; });
@@ -1553,12 +1563,26 @@ let monLastKnownMonitorId = null;
 
 function genId() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
 
+const MON_STALE_MS = 20000; // no heartbeat in 20s = treat as ended (watchdog beats every 5s while truly active)
+
 async function checkMonitorActive() {
   try {
     const rows = await sbFetch('monitor_session?order=id.asc&limit=1');
-    if (rows && rows.length) return { active: rows[0].active === true, monitorId: rows[0].monitor_id, viewerCount: rows[0].viewer_count || 0 };
+    if (rows && rows.length) {
+      const row = rows[0];
+      const isStale = !row.updated_at || (Date.now() - new Date(row.updated_at).getTime()) > MON_STALE_MS;
+      const active = row.active === true && !isStale;
+      if (row.active === true && isStale) clearStaleMonitorSession(row.id); // best-effort cleanup, don't block on it
+      return { active, monitorId: active ? row.monitor_id : null, viewerCount: row.viewer_count || 0 };
+    }
   } catch (err) {}
   return { active: false, monitorId: null, viewerCount: 0 };
+}
+
+async function clearStaleMonitorSession(id) {
+  try {
+    await sbFetch(`monitor_session?id=eq.${id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({ active:false, monitor_id:null, viewer_count:0 }) });
+  } catch (err) {}
 }
 
 async function setMonitorSession(fields) {
@@ -1763,7 +1787,7 @@ function toggleMonitorMic() {
 
 function startMonitorWatchdog() {
   if (monDisconnectTimer) clearInterval(monDisconnectTimer);
-  // Re-assert presence row periodically in case it gets overwritten by a race;
+  // Refresh our own heartbeat (updated_at) so viewers' staleness check sees us as alive;
   // also detect if we've been displaced (shouldn't happen while we're 'monitor', but guards against stale state).
   monDisconnectTimer = setInterval(async () => {
     if (monRole !== 'monitor') return;
@@ -1771,7 +1795,9 @@ function startMonitorWatchdog() {
     if (monitorId && monitorId !== monId) {
       // Someone else's monitor_id is now active and it's not us — we were displaced.
       stopMonitor(true);
+      return;
     }
+    await setMonitorSession({ active:true, monitor_id:monId });
   }, 5000);
 }
 
