@@ -642,6 +642,10 @@ let isWatching     = false;
 let selectedCamera = 'rear';
 
 // ── Fields ───────────────────────────────────────────────────
+// FIELDS drives pill rendering, DB payload, summary grid, and edit modal.
+// Each entry's `group` maps to a `<div class="group-pills" id="group-{group}">` container in the Baby tab HTML.
+// Valid group values: 'type' | 'diaper' | 'exercises' | 'other'
+// Summary grid elements are expected as `id="sum-{key}"` (rendered by buildSummaryGrid on init).
 const FIELDS = [
   { key: 'breast',  label: 'Breast',  dbKey: 'breast',  group: 'type',      color: '#f0a8d0' },
   { key: 'formula', label: 'Formula', dbKey: 'formula', group: 'type',      color: '#a8d8f0' },
@@ -723,7 +727,7 @@ function buildCheckPills() {
     <div class="check-pill" id="epill-${f.key}" onclick="toggleEditCheck('${f.key}')">
       <span class="check-icon" id="eicon-${f.key}"></span>${f.label}
     </div>`).join('');
-  getEl('summary-grid').innerHTML = FIELDS.filter(f => f.key!=='pump').map(f => `
+  getEl('summary-grid').innerHTML = FIELDS.map(f => `
     <div class="summary-cell"><div class="num" id="sum-${f.key}">—</div><div class="lbl">${f.label}</div></div>`).join('');
 }
 
@@ -784,10 +788,7 @@ async function loadNote() {
     } else {
       display.textContent = 'No note yet'; display.classList.add('empty'); input.value = '';
     }
-  } catch (err) {}
-}
-
-function toggleNoteEdit() {
+  } catch (err) { console.error('loadNote failed:', err); }
   const display = getEl('note-display'), input = getEl('note-input'), btn = getEl('note-edit-btn');
   noteEditing = !noteEditing;
   if (noteEditing) {
@@ -855,14 +856,18 @@ function updateLastBar(rows) {
 }
 
 function rollingWindowPlusOne(rows) {
-  // rows must be sorted ts.desc. Returns in-window entries plus the single
-  // next-oldest entry past the cutoff, if one exists — folded in uniformly,
-  // no distinction made anywhere downstream.
+  // rows must be sorted ts.desc. Returns all in-window entries, then continues
+  // walking backward past the 24h cutoff — including every entry (regardless of
+  // Amount) — until it finds one that has a non-empty Amount. That entry is
+  // included and then the walk stops. All included entries are folded in uniformly.
   const cutoff = rollingCutoff();
   const inWindow = [];
   let i = 0;
   for (; i < rows.length && rows[i].ts >= cutoff; i++) inWindow.push(rows[i]);
-  if (i < rows.length) inWindow.push(rows[i]);
+  for (; i < rows.length; i++) {
+    inWindow.push(rows[i]);
+    if (rows[i].amount && String(rows[i].amount).trim() !== '') break;
+  }
   return inWindow;
 }
 
@@ -870,6 +875,9 @@ function renderList(rows) {
   const filtered = rollingWindowPlusOne(rows);
   getEl('entry-count').textContent = filtered.length+(filtered.length===1?' entry':' entries');
   if (!filtered.length) { getEl('log-body').innerHTML='<div class="empty-state">No entries in the past 24 hours</div>'; return; }
+  // NOTE: row.id is a DB-generated bigint — safe to interpolate directly into onclick.
+  // Do not interpolate free-text row values (notes, amount, etc.) into onclick attributes;
+  // use data-attributes + delegated listeners instead to avoid XSS.
   getEl('log-body').innerHTML = filtered.map(row => {
     const tags = FIELDS.filter(f => row[f.dbKey]).map(f => `<span class="check-tag">${f.label}</span>`).join('');
     return `<div class="entry-row">
@@ -922,7 +930,7 @@ function buildSummary() {
   const recent = rollingWindowPlusOne(allEntries);
   const mlTotal = recent.reduce((sum,r) => { const n=parseFloat(r.amount); return sum+(isNaN(n)?0:n); }, 0);
   getEl('ml-total').textContent = mlTotal>0 ? Math.round(mlTotal)+' mL' : '—';
-  FIELDS.filter(f => f.key!=='pump' && f.key!=='breast' && f.key!=='formula').forEach(f => { getEl('sum-'+f.key).textContent = recent.filter(r => r[f.dbKey]).length; });
+  FIELDS.filter(f => f.key!=='breast' && f.key!=='formula').forEach(f => { getEl('sum-'+f.key).textContent = recent.filter(r => r[f.dbKey]).length; });
   // Breast/Formula: sum mL rather than count entries. Only attribute an entry's
   // amount to one of the two when exactly one of them is checked — if both or
   // neither are checked, the split is ambiguous and the entry is excluded from both.
