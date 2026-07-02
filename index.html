@@ -624,6 +624,8 @@ const SB_URL         = 'https://bwazurshtrpqzatmkdkj.supabase.co';
 const SB_KEY         = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YXp1cnNodHJwcXphdG1rZGtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MjMwMTMsImV4cCI6MjA5NTQ5OTAxM30.GLp4TEQ8geyczhNXzH8ZX3QcnAq32GntTgitXWcagdY';
 const BUCKET         = 'media';
 const STREAM_CH      = 'webrtc-stream';
+// WX_LAT/WX_LON must match the location label hardcoded in the Weather tab HTML.
+// Update both the constants here and the <p class="section-label"> in panel-weather if the location changes.
 const WX_LAT         = 39.9106;
 const WX_LON         = -75.1802;
 const MAX_STORAGE_MB = 2048;
@@ -674,6 +676,9 @@ function nowTs() {
 }
 function rollingCutoff() {
   return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0,19).replace('T',' ');
+}
+function sevenDayCutoff() {
+  return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0,19).replace('T',' ');
 }
 function fmt12time(tsStr) {
   const [hh, mm] = tsStr.split(' ')[1].split(':');
@@ -784,11 +789,16 @@ async function loadNote() {
     const rows = await sbFetch('shared_note?order=id.desc&limit=1');
     const display = getEl('note-display'), input = getEl('note-input');
     if (rows && rows.length && rows[0].note?.trim()) {
-      display.textContent = rows[0].note; display.classList.remove('empty'); input.value = rows[0].note;
+      display.textContent = rows[0].note; display.classList.remove('empty');
+      if (!noteEditing) input.value = rows[0].note;
     } else {
-      display.textContent = 'No note yet'; display.classList.add('empty'); input.value = '';
+      display.textContent = 'No note yet'; display.classList.add('empty');
+      if (!noteEditing) input.value = '';
     }
   } catch (err) { console.error('loadNote failed:', err); }
+}
+
+function toggleNoteEdit() {
   const display = getEl('note-display'), input = getEl('note-input'), btn = getEl('note-edit-btn');
   noteEditing = !noteEditing;
   if (noteEditing) {
@@ -843,7 +853,7 @@ async function logEntry() {
 async function loadEntries() {
   setStatus('','Loading…');
   try {
-    const since = new Date(Date.now()-7*24*60*60*1000).toISOString().slice(0,19).replace('T',' ');
+    const since = sevenDayCutoff();
     const rows  = await sbFetch(`baby_log?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=500`);
     allEntries  = rows || [];
     renderList(allEntries); updateLastBar(allEntries); buildSummary(); setStatus('ok','Live');
@@ -960,15 +970,17 @@ async function logBP() {
 
 async function loadBP() {
   try {
-    const since = new Date(Date.now()-7*24*60*60*1000).toISOString().slice(0,19).replace('T',' ');
+    const since = sevenDayCutoff();
     const rows  = await sbFetch(`bp_log?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=200`);
     allBP = rows||[]; renderBP(allBP); buildBPChart(allBP);
-  } catch (err) { getEl('bp-body').innerHTML='<div class="empty-state">Could not load</div>'; }
+  } catch (err) { console.error('loadBP failed:', err); getEl('bp-body').innerHTML='<div class="empty-state">Could not load</div>'; }
 }
 
 function renderBP(rows) {
   getEl('bp-count').textContent = rows.length+(rows.length===1?' reading':' readings');
   if (!rows.length) { getEl('bp-body').innerHTML='<div class="empty-state">No readings in the past 7 days</div>'; return; }
+  // NOTE: row.id is a DB-generated bigint — safe to interpolate directly into onclick.
+  // Do not interpolate free-text row values into onclick attributes; use data-attributes + delegated listeners instead.
   getEl('bp-body').innerHTML = rows.map(row => `
     <div class="bp-reading">
       <span class="bp-time">${fmt12full(row.ts)}</span>
@@ -980,6 +992,8 @@ function renderBP(rows) {
 function buildBPChart(rows) {
   const rev = [...rows].reverse();
   if (chartBP) chartBP.destroy();
+  // Colors are hardcoded hex rather than CSS variables because Chart.js cannot read CSS custom properties directly.
+  // #f0a8a8 ≈ --danger (Sys line), #a8d8f0 ≈ --blue (Dia line). Update both here and in CSS if the palette changes.
   chartBP = new Chart(getEl('chart-bp'), {
     type:'line',
     data:{ labels:rev.map(r=>fmt12full(r.ts)), datasets:[
@@ -2201,26 +2215,27 @@ async function loadWeather() {
     const periods = fcData.properties.periods;
     const hourly  = hrData.properties.periods;
     const current = hourly[0];
-    const tempF   = current.temperature;
 
+    // Prefer live observation station data for Current Temp and Dew Point over hourly forecast values.
+    let tempF    = current.temperature;
     let dewPoint = '—';
-    if (current.dewpoint?.value != null) {
-      dewPoint = Math.round(current.dewpoint.value*9/5+32)+'°F';
-    } else {
-      try {
-        const stData  = await (await fetch(observationStations)).json();
-        const obsData = await (await fetch(stData.features[0].id+'/observations/latest')).json();
-        const dp      = obsData.properties?.dewpoint?.value;
-        if (dp!=null) dewPoint = Math.round(dp*9/5+32)+'°F';
-      } catch (e) {}
+    try {
+      const stData  = await (await fetch(observationStations)).json();
+      const obsData = await (await fetch(stData.features[0].id+'/observations/latest')).json();
+      const obs     = obsData.properties;
+      if (obs?.temperature?.value != null) tempF = Math.round(obs.temperature.value*9/5+32);
+      if (obs?.dewpoint?.value    != null) dewPoint = Math.round(obs.dewpoint.value*9/5+32)+'°F';
+    } catch (e) {
+      console.error('Observation station fetch failed, falling back to hourly forecast:', e);
+      if (current.dewpoint?.value != null) dewPoint = Math.round(current.dewpoint.value*9/5+32)+'°F';
     }
 
-    const midnight    = new Date(); midnight.setHours(0,0,0,0);
-    const midnightTom = new Date(midnight); midnightTom.setDate(midnightTom.getDate()+1);
-    const todayH      = hourly.filter(h => { const t=new Date(h.startTime); return t>=midnight&&t<midnightTom; });
-    const remainH     = hourly.filter(h => { const t=new Date(h.startTime); return t>=new Date()&&t<midnightTom; });
-    const highTemp    = todayH.length  ? Math.max(...todayH.map(h=>h.temperature))+'°F'  : '—';
-    const lowTemp     = remainH.length ? Math.min(...remainH.map(h=>h.temperature))+'°F' : '—';
+    // Today's High and Tonight's Low come from the NWS forecast periods (predicted values for the day),
+    // not from real-time hourly accounting. periods[0] = daytime "Today", periods[1] = "Tonight".
+    const todayPeriod   = periods.find(p => p.isDaytime  && p.name === 'Today')   || periods[0];
+    const tonightPeriod = periods.find(p => !p.isDaytime && p.name === 'Tonight') || periods[1];
+    const highTemp = todayPeriod   ? todayPeriod.temperature+'°F'   : '—';
+    const lowTemp  = tonightPeriod ? tonightPeriod.temperature+'°F' : '—';
 
     const next3 = hourly.slice(0,3).map(h => ({
       time:   fmt12time(h.startTime.slice(0,19).replace('T',' ')),
@@ -2232,7 +2247,7 @@ async function loadWeather() {
         <div class="weather-cell"><div class="w-val">${tempF}°F</div><div class="w-lbl">Current Temp</div></div>
         <div class="weather-cell"><div class="w-val">${dewPoint}</div><div class="w-lbl">Dew Point</div></div>
         <div class="weather-cell"><div class="w-val">${highTemp}</div><div class="w-lbl">Today's High</div></div>
-        <div class="weather-cell"><div class="w-val">${lowTemp}</div><div class="w-lbl">Today's Low</div></div>
+        <div class="weather-cell"><div class="w-val">${lowTemp}</div><div class="w-lbl">Tonight's Low</div></div>
       </div>
       <p class="section-label" style="margin-bottom:0.5rem">Precip chance — next 3 hours</p>
       <div class="precip-hours">
@@ -2243,7 +2258,7 @@ async function loadWeather() {
       ${periods.map(p=>`
         <div class="forecast-period">
           <span class="forecast-name">${p.name}</span>
-          <span class="forecast-info"><strong>${p.temperature}°F</strong> — ${p.shortForecast}</span>
+          <span class="forecast-info"><strong>${p.temperature}°F</strong> — ${p.shortForecast}<!-- trusted NWS source; not escaped. Do not use this pattern with untrusted data. --></span>
         </div>`).join('')}`;
   } catch (err) {
     getEl('weather-content').innerHTML='<div class="weather-error">Could not load weather.<br>Check connection and try again.</div>';
