@@ -262,11 +262,7 @@
     .status-pill { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: var(--mono); color: var(--muted); }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: background 0.3s; flex-shrink: 0; }
     .status-dot.ok { background: var(--accent); } .status-dot.err { background: var(--danger); }
-    .version-display { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: center; padding: 0.5rem 0 0; }
-    .changelog-entry { padding: 10px 0; border-bottom: 1px solid var(--border); }
-    .changelog-entry:last-child { border-bottom: none; }
-    .changelog-version { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-bottom: 3px; }
-    .changelog-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .version-display { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: center; padding: 0.5rem 0; }
 
     /* Modal */
     .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; padding: 1.25rem; }
@@ -556,40 +552,8 @@
       <p class="section-label">App update</p>
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
     </div>
-    <div class="card">
-      <p class="section-label">Changelog</p>
-      <div class="changelog-entry"><div class="changelog-version">v1.25</div><div class="changelog-desc">Baby tab: 24h summary now shows mL totals for Breast and Formula instead of entry counts (an entry only counts toward one or the other if exactly one is checked — ambiguous entries are excluded from both). Monitor tab: added a connected-viewer list with per-viewer disconnect, a live "talking" indicator tied to each viewer's Push to Talk state, and a sound-activated alert — the monitor analyzes its own mic independently of the video call and notifies viewers (vibration, chime, and a system notification if permitted) when sound crosses a threshold for a sustained moment, with a cooldown so continuous crying doesn't spam repeated alerts.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.24</div><div class="changelog-desc">Added Monitor tab — baby-monitor mode, distinct from Stream's two-way call. Anyone opening the tab can start monitoring (broadcasts camera+mic) or, if a monitor is already active, view it. Only one monitor at a time — starting a new one displaces the old. Video flows monitor→viewer only; audio is two-way but only between monitor and each viewer individually (never viewer-to-viewer). Monitor mic defaults on with its own mute toggle; viewer mic defaults off behind a tap-to-toggle Push to Talk button. Includes a disconnect watchdog with an audible chime and a hard-to-miss alert (faster than Stream's reconnect threshold, since a viewer device may be unattended on a nightstand), a night-mode screen dim that keeps audio/connection alive, and a live viewer count shown on the monitor's screen.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.23</div><div class="changelog-desc">Hid the Stream and Media tabs from the tab bar to make room for the upcoming Monitor tab. Code for both is untouched and still fully present in the file — panels, JS, CSS — just not reachable from the UI for this build. Easy to re-enable later.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.22</div><div class="changelog-desc">Fixed Stream tab not connecting at all — calling code referenced initSupabaseClient(), which had been left undefined during the v1.21 Stream tab rebuild, so the signalling channel never subscribed and both sides waited forever.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.21</div><div class="changelog-desc">Stream tab rebuilt to share code with IPM's CommBadge: same card layout, collapsible Settings panel, camera toggle button (replacing Rear/Front selector), and call logic. Added Wake Lock (keeps screen on during calls), facingMode fallback if the requested camera is unavailable, and automatic video/reconnect recovery when returning from background — none of these had actually made it into Matrix despite being listed as shared fixes. Tap-to-hear-audio prompt added for when iOS blocks remote audio autoplay. Baby tab: moved Pumped under Other (now first), added a new Type row with Breast and Formula buttons, tracked in the log going forward.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.20</div><div class="changelog-desc">Fixed manifest start_url, scope, and app name (was still showing Baby Log) — fixes home screen shortcut 404. Added audio routing fix and stricter audio constraints to Stream tab. Added camera Flip button for mid-call switching, synced from CommBadge.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.19</div><div class="changelog-desc">Rebuilt Stream tab as two-way video call with session chat. Both users send and receive video and audio. Single Start Call button — second user sees Join Call. Busy signal for third users. Data channel chat appears during call, cleared on end. Picture-in-picture local video. End Call button.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.18</div><div class="changelog-desc">Added stream quality sliders (resolution, frame rate, bitrate) shown before going live, saved to localStorage. Default resolution raised to 480×360. Bitrate, framerate and SDP cap all driven by slider values. window._debugPC exposed for console diagnostics.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.17</div><div class="changelog-desc">Added TURN server (Open Relay) for NAT traversal. Adaptive bitrate adjusts based on packet loss and RTT. Forced keyframe every 2 seconds for faster recovery. ICE restart on disconnection before full teardown. Auto-reconnect viewer up to 5 attempts with backoff. Connection quality indicator (Good/Fair/Poor) in stream status bar.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.16</div><div class="changelog-desc">Rebuilt stream signalling as pull-based: viewer announces ready, broadcaster responds with offer. Broadcaster stays live indefinitely, viewers join any time. Opening Stream tab auto-joins if stream active. Bitrate back to 200kbps for stability. Removed order dependency entirely.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.15</div><div class="changelog-desc">Raised stream bitrate to 400kbps. Set degradationPreference to maintain-framerate for smoother motion. Added Mute and Hide Camera buttons for broadcaster. Check for Update now returns to Settings tab after reload.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.14.4</div><div class="changelog-desc">Stream presence via Supabase stream_session table. Broadcaster can go live before viewer joins. Viewer checks if stream is active on Watch tap and connects immediately. Stream tab shows live indicator to all users. Retry logic if first request-offer is missed.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.14.3</div><div class="changelog-desc">Lowered stream quality to reduce bandwidth: 320x240 resolution, 12-15fps, 200kbps bitrate cap via SDP and RTCRtpSender. VP8 codec preferred. Lower audio sample rate. Should prevent freezing on modest connections.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.14.2</div><div class="changelog-desc">Fixed frozen video: ICE candidates now queued until remote description is set. Duplicate offers ignored mid-negotiation. Explicit play() call added for iOS Safari. Broadcaster resets cleanly on viewer disconnect.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.14.1</div><div class="changelog-desc">Fixed stream: viewer no longer requests camera. Broadcaster re-sends offer every 4 seconds until viewer connects. Viewer requests fresh offer on join. Broadcaster auto-resets for reconnection.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.14</div><div class="changelog-desc">Added Stream tab with live WebRTC video and audio streaming via Supabase Realtime signalling. Either device can broadcast or watch. Camera selector (front/rear). Live indicator on Stream tab. Code cleanup: storageFetch helper, separated load/render functions.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.13</div><div class="changelog-desc">Renamed app to The MurDough Matrix. Tabs moved to top. Removed 24H tab — totals now at bottom of Baby tab. Live status moved to Settings. Note bar rebuilt with Edit button.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.12.1</div><div class="changelog-desc">Fixed note bar overlapping tabs. Fixed media gallery not loading after upload.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.12</div><div class="changelog-desc">Added shared note bar. Added Media tab with photo/video upload, gallery, lightbox, and storage bar. Fixed Today's Low and dew point fallback.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.11</div><div class="changelog-desc">Restructured log form. Added D3 checkbox. Shortened 7-day forecast. Fixed Today's High/Low. Removed notifications. Added Changelog.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.10</div><div class="changelog-desc">Haptic feedback, BP trend chart, true rolling 24-hour window, Check for Update, mL input, small amount confirmation. Removed Trends tab.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.09</div><div class="changelog-desc">Added Weather and BP tabs with Supabase storage and CSV export.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.08</div><div class="changelog-desc">Hardcoded Supabase credentials. Version number in Settings.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.07</div><div class="changelog-desc">Replaced Exercises with TMJ and Guppy. Rolling 24-hour window. Timestamp editing.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.06</div><div class="changelog-desc">Full code cleanup — centralised field config, looped rendering.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.05</div><div class="changelog-desc">Two-line entry rows, edit modal, hardcoded config.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.04</div><div class="changelog-desc">Notes field, daily summary, last-entry banner, trends charts, 12-hour clock.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.03</div><div class="changelog-desc">Removed Name field. Added Exercises and Tummy.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.02</div><div class="changelog-desc">First PWA on Netlify with Supabase.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.01</div><div class="changelog-desc">Shared multi-user version with persistent storage.</div></div>
-      <div class="changelog-entry"><div class="changelog-version">v1.00</div><div class="changelog-desc">Initial logging app with Amount, Wet, BM, Pumped and timestamp.</div></div>
-      <div class="version-display">The MurDough Matrix v1.25</div>
+    <div class="card" style="text-align:center">
+      <div class="version-display">The MurDough Matrix v2.0</div>
     </div>
   </div>
 
@@ -624,6 +588,8 @@ const SB_URL         = 'https://bwazurshtrpqzatmkdkj.supabase.co';
 const SB_KEY         = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YXp1cnNodHJwcXphdG1rZGtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MjMwMTMsImV4cCI6MjA5NTQ5OTAxM30.GLp4TEQ8geyczhNXzH8ZX3QcnAq32GntTgitXWcagdY';
 const BUCKET         = 'media';
 const STREAM_CH      = 'webrtc-stream';
+// WX_LAT/WX_LON must match the location label hardcoded in the Weather tab HTML.
+// Update both the constants here and the <p class="section-label"> in panel-weather if the location changes.
 const WX_LAT         = 39.9106;
 const WX_LON         = -75.1802;
 const MAX_STORAGE_MB = 2048;
@@ -674,6 +640,9 @@ function nowTs() {
 }
 function rollingCutoff() {
   return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0,19).replace('T',' ');
+}
+function sevenDayCutoff() {
+  return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0,19).replace('T',' ');
 }
 function fmt12time(tsStr) {
   const [hh, mm] = tsStr.split(' ')[1].split(':');
@@ -784,11 +753,16 @@ async function loadNote() {
     const rows = await sbFetch('shared_note?order=id.desc&limit=1');
     const display = getEl('note-display'), input = getEl('note-input');
     if (rows && rows.length && rows[0].note?.trim()) {
-      display.textContent = rows[0].note; display.classList.remove('empty'); input.value = rows[0].note;
+      display.textContent = rows[0].note; display.classList.remove('empty');
+      if (!noteEditing) input.value = rows[0].note;
     } else {
-      display.textContent = 'No note yet'; display.classList.add('empty'); input.value = '';
+      display.textContent = 'No note yet'; display.classList.add('empty');
+      if (!noteEditing) input.value = '';
     }
   } catch (err) { console.error('loadNote failed:', err); }
+}
+
+function toggleNoteEdit() {
   const display = getEl('note-display'), input = getEl('note-input'), btn = getEl('note-edit-btn');
   noteEditing = !noteEditing;
   if (noteEditing) {
@@ -843,7 +817,7 @@ async function logEntry() {
 async function loadEntries() {
   setStatus('','Loading…');
   try {
-    const since = new Date(Date.now()-7*24*60*60*1000).toISOString().slice(0,19).replace('T',' ');
+    const since = sevenDayCutoff();
     const rows  = await sbFetch(`baby_log?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=500`);
     allEntries  = rows || [];
     renderList(allEntries); updateLastBar(allEntries); buildSummary(); setStatus('ok','Live');
@@ -960,15 +934,17 @@ async function logBP() {
 
 async function loadBP() {
   try {
-    const since = new Date(Date.now()-7*24*60*60*1000).toISOString().slice(0,19).replace('T',' ');
+    const since = sevenDayCutoff();
     const rows  = await sbFetch(`bp_log?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=200`);
     allBP = rows||[]; renderBP(allBP); buildBPChart(allBP);
-  } catch (err) { getEl('bp-body').innerHTML='<div class="empty-state">Could not load</div>'; }
+  } catch (err) { console.error('loadBP failed:', err); getEl('bp-body').innerHTML='<div class="empty-state">Could not load</div>'; }
 }
 
 function renderBP(rows) {
   getEl('bp-count').textContent = rows.length+(rows.length===1?' reading':' readings');
   if (!rows.length) { getEl('bp-body').innerHTML='<div class="empty-state">No readings in the past 7 days</div>'; return; }
+  // NOTE: row.id is a DB-generated bigint — safe to interpolate directly into onclick.
+  // Do not interpolate free-text row values into onclick attributes; use data-attributes + delegated listeners instead.
   getEl('bp-body').innerHTML = rows.map(row => `
     <div class="bp-reading">
       <span class="bp-time">${fmt12full(row.ts)}</span>
@@ -980,6 +956,8 @@ function renderBP(rows) {
 function buildBPChart(rows) {
   const rev = [...rows].reverse();
   if (chartBP) chartBP.destroy();
+  // Colors are hardcoded hex rather than CSS variables because Chart.js cannot read CSS custom properties directly.
+  // #f0a8a8 ≈ --danger (Sys line), #a8d8f0 ≈ --blue (Dia line). Update both here and in CSS if the palette changes.
   chartBP = new Chart(getEl('chart-bp'), {
     type:'line',
     data:{ labels:rev.map(r=>fmt12full(r.ts)), datasets:[
@@ -1566,8 +1544,10 @@ let monPollTimer = null;
 let monPttActive = false;
 let monMicMuted = false;
 let monNightMode = false;
-let monDisconnectTimer = null;
+let monWatchdogTimer = null;   // interval: broadcaster heartbeat + displacement check (startMonitorWatchdog)
+let monReconnectTimer = null;  // timeout: viewer grace period before forced rejoin (flagMonitorDisconnect)
 let monLastKnownMonitorId = null;
+let monNextViewerNum = 1;      // increments each time a viewer joins; used for display label only
 
 function genId() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
 
@@ -1583,7 +1563,7 @@ async function checkMonitorActive() {
       if (row.active === true && isStale) clearStaleMonitorSession(row.id); // best-effort cleanup, don't block on it
       return { active, monitorId: active ? row.monitor_id : null, viewerCount: row.viewer_count || 0 };
     }
-  } catch (err) {}
+  } catch (err) { console.error('checkMonitorActive failed:', err); }
   return { active: false, monitorId: null, viewerCount: 0 };
 }
 
@@ -1717,8 +1697,6 @@ async function setupMonitorChannel() {
   return new Promise(resolve => { monChannel.subscribe(status => { if (status==='SUBSCRIBED') resolve(); }); });
 }
 
-let monNextViewerNum = 1;
-
 async function createMonitorPeer(viewerId) {
   if (monPeers[viewerId]) closeMonitorPeer(viewerId);
   const pc = new RTCPeerConnection(RTC_CONFIG);
@@ -1777,6 +1755,7 @@ function updateViewerCountDisplay() {
 function renderViewerList(connected) {
   const el = getEl('mon-viewer-list'); if (!el) return;
   if (!connected || connected.length === 0) { el.innerHTML = ''; return; }
+  // NOTE: id is an internal genId() value (random alphanumeric), not user input — safe to interpolate into onclick.
   el.innerHTML = connected.map(([id,p]) => `
     <div class="viewer-row">
       <span class="viewer-label">Viewer ${p.num}${p.talking ? ' <span class="viewer-talking">&#127908; talking</span>' : ''}</span>
@@ -1794,10 +1773,10 @@ function toggleMonitorMic() {
 }
 
 function startMonitorWatchdog() {
-  if (monDisconnectTimer) clearInterval(monDisconnectTimer);
+  if (monWatchdogTimer) clearInterval(monWatchdogTimer);
   // Refresh our own heartbeat (updated_at) so viewers' staleness check sees us as alive;
   // also detect if we've been displaced (shouldn't happen while we're 'monitor', but guards against stale state).
-  monDisconnectTimer = setInterval(async () => {
+  monWatchdogTimer = setInterval(async () => {
     if (monRole !== 'monitor') return;
     const { monitorId } = await checkMonitorActive();
     if (monitorId && monitorId !== monId) {
@@ -1815,7 +1794,7 @@ function stopMonitor(displaced) {
   monPeers = {};
   stopSoundAlertAnalyser();
   if (monLocalStream) { monLocalStream.getTracks().forEach(t=>t.stop()); monLocalStream = null; }
-  if (monDisconnectTimer) { clearInterval(monDisconnectTimer); monDisconnectTimer = null; }
+  if (monWatchdogTimer) { clearInterval(monWatchdogTimer); monWatchdogTimer = null; }
   if (!displaced) setMonitorSession({ active:false, monitor_id:null, viewer_count:0 });
   monRole = null; monId = null;
   if (displaced) showToast('Another device started monitoring');
@@ -1967,19 +1946,19 @@ function toggleNightMode() {
 // Faster + louder than Stream's reconnect, since a viewer device may be
 // unattended on a nightstand and a silent drop would go unnoticed.
 function flagMonitorDisconnect() {
-  if (monDisconnectTimer) return; // already flagged
+  if (monReconnectTimer) return; // already flagged
   getEl('mon-status-text').textContent = '⚠ Disconnected — reconnecting…';
   getEl('mon-status-text').style.color = 'var(--danger)';
   getEl('mon-dot').className = 'stream-dot';
   playDisconnectChime();
-  monDisconnectTimer = setTimeout(() => {
+  monReconnectTimer = setTimeout(() => {
     // Still not recovered after grace period — try a fresh join.
     if (monRole === 'viewer') { stopViewing(); startViewing(); }
   }, MONITOR_DISCONNECT_GRACE_MS);
 }
 
 function clearMonitorDisconnectAlert() {
-  if (monDisconnectTimer) { clearTimeout(monDisconnectTimer); monDisconnectTimer = null; }
+  if (monReconnectTimer) { clearTimeout(monReconnectTimer); monReconnectTimer = null; }
   getEl('mon-status-text').style.color = '';
 }
 
@@ -2201,26 +2180,27 @@ async function loadWeather() {
     const periods = fcData.properties.periods;
     const hourly  = hrData.properties.periods;
     const current = hourly[0];
-    const tempF   = current.temperature;
 
+    // Prefer live observation station data for Current Temp and Dew Point over hourly forecast values.
+    let tempF    = current.temperature;
     let dewPoint = '—';
-    if (current.dewpoint?.value != null) {
-      dewPoint = Math.round(current.dewpoint.value*9/5+32)+'°F';
-    } else {
-      try {
-        const stData  = await (await fetch(observationStations)).json();
-        const obsData = await (await fetch(stData.features[0].id+'/observations/latest')).json();
-        const dp      = obsData.properties?.dewpoint?.value;
-        if (dp!=null) dewPoint = Math.round(dp*9/5+32)+'°F';
-      } catch (e) {}
+    try {
+      const stData  = await (await fetch(observationStations)).json();
+      const obsData = await (await fetch(stData.features[0].id+'/observations/latest')).json();
+      const obs     = obsData.properties;
+      if (obs?.temperature?.value != null) tempF = Math.round(obs.temperature.value*9/5+32);
+      if (obs?.dewpoint?.value    != null) dewPoint = Math.round(obs.dewpoint.value*9/5+32)+'°F';
+    } catch (e) {
+      console.error('Observation station fetch failed, falling back to hourly forecast:', e);
+      if (current.dewpoint?.value != null) dewPoint = Math.round(current.dewpoint.value*9/5+32)+'°F';
     }
 
-    const midnight    = new Date(); midnight.setHours(0,0,0,0);
-    const midnightTom = new Date(midnight); midnightTom.setDate(midnightTom.getDate()+1);
-    const todayH      = hourly.filter(h => { const t=new Date(h.startTime); return t>=midnight&&t<midnightTom; });
-    const remainH     = hourly.filter(h => { const t=new Date(h.startTime); return t>=new Date()&&t<midnightTom; });
-    const highTemp    = todayH.length  ? Math.max(...todayH.map(h=>h.temperature))+'°F'  : '—';
-    const lowTemp     = remainH.length ? Math.min(...remainH.map(h=>h.temperature))+'°F' : '—';
+    // Today's High and Tonight's Low come from the NWS forecast periods (predicted values for the day),
+    // not from real-time hourly accounting. periods[0] = daytime "Today", periods[1] = "Tonight".
+    const todayPeriod   = periods.find(p => p.isDaytime  && p.name === 'Today')   || periods[0];
+    const tonightPeriod = periods.find(p => !p.isDaytime && p.name === 'Tonight') || periods[1];
+    const highTemp = todayPeriod   ? todayPeriod.temperature+'°F'   : '—';
+    const lowTemp  = tonightPeriod ? tonightPeriod.temperature+'°F' : '—';
 
     const next3 = hourly.slice(0,3).map(h => ({
       time:   fmt12time(h.startTime.slice(0,19).replace('T',' ')),
@@ -2232,7 +2212,7 @@ async function loadWeather() {
         <div class="weather-cell"><div class="w-val">${tempF}°F</div><div class="w-lbl">Current Temp</div></div>
         <div class="weather-cell"><div class="w-val">${dewPoint}</div><div class="w-lbl">Dew Point</div></div>
         <div class="weather-cell"><div class="w-val">${highTemp}</div><div class="w-lbl">Today's High</div></div>
-        <div class="weather-cell"><div class="w-val">${lowTemp}</div><div class="w-lbl">Today's Low</div></div>
+        <div class="weather-cell"><div class="w-val">${lowTemp}</div><div class="w-lbl">Tonight's Low</div></div>
       </div>
       <p class="section-label" style="margin-bottom:0.5rem">Precip chance — next 3 hours</p>
       <div class="precip-hours">
@@ -2243,7 +2223,7 @@ async function loadWeather() {
       ${periods.map(p=>`
         <div class="forecast-period">
           <span class="forecast-name">${p.name}</span>
-          <span class="forecast-info"><strong>${p.temperature}°F</strong> — ${p.shortForecast}</span>
+          <span class="forecast-info"><strong>${p.temperature}°F</strong> — ${p.shortForecast}<!-- trusted NWS source; not escaped. Do not use this pattern with untrusted data. --></span>
         </div>`).join('')}`;
   } catch (err) {
     getEl('weather-content').innerHTML='<div class="weather-error">Could not load weather.<br>Check connection and try again.</div>';
@@ -2303,7 +2283,7 @@ function init() {
     switchTab(returnTab);
   }
 }
-// Test
+
 setInterval(() => { if (allEntries.length) updateLastBar(allEntries); }, 60000);
 setInterval(loadEntries, 30000);
 setInterval(loadNote, 30000);
