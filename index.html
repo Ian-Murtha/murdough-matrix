@@ -346,6 +346,9 @@
       <div class="ml-total-card"><div class="ml-num" id="ml-total">—</div><div class="ml-lbl">mL fed</div></div>
       <div class="summary-grid" id="summary-grid"></div>
     </div>
+    <div class="card" style="text-align:center">
+      <div id="age-display" class="version-display" style="font-size:13px;color:var(--text)"></div>
+    </div>
   </div>
 
   <!-- ══ BP TAB ══ -->
@@ -1551,7 +1554,44 @@ let monNextViewerNum = 1;      // increments each time a viewer joins; used for 
 
 function genId() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
 
-const MON_STALE_MS = 20000; // no heartbeat in 20s = treat as ended (watchdog beats every 5s while truly active)
+const BIRTH_DATE = new Date('2026-05-20T00:00:00');
+
+function updateAgeDisplay() {
+  const now = new Date();
+  const totalDays = Math.floor((now - BIRTH_DATE) / (1000 * 60 * 60 * 24));
+  if (totalDays < 0) { getEl('age-display').textContent = ''; return; }
+
+  let label;
+  if (totalDays < 30) {
+    const weeks = Math.floor(totalDays / 7);
+    const days  = totalDays % 7;
+    label = weeks > 0
+      ? `${weeks} week${weeks!==1?'s':''}, ${days} day${days!==1?'s':''}`
+      : `${days} day${days!==1?'s':''}`;
+  } else {
+    // Calculate full calendar months elapsed
+    let months = (now.getFullYear() - BIRTH_DATE.getFullYear()) * 12 + (now.getMonth() - BIRTH_DATE.getMonth());
+    if (now.getDate() < BIRTH_DATE.getDate()) months--;
+    if (months < 24) {
+      const afterMonths = new Date(BIRTH_DATE);
+      afterMonths.setMonth(afterMonths.getMonth() + months);
+      const remDays  = Math.floor((now - afterMonths) / (1000 * 60 * 60 * 24));
+      const weeks    = Math.floor(remDays / 7);
+      const days     = remDays % 7;
+      const parts    = [`${months} month${months!==1?'s':''}`];
+      if (weeks > 0) parts.push(`${weeks} week${weeks!==1?'s':''}`);
+      if (days  > 0) parts.push(`${days} day${days!==1?'s':''}`);
+      label = parts.join(', ');
+    } else {
+      const years  = Math.floor(months / 12);
+      const remMon = months % 12;
+      label = remMon > 0
+        ? `${years} year${years!==1?'s':''}, ${remMon} month${remMon!==1?'s':''}`
+        : `${years} year${years!==1?'s':''}`;
+    }
+  }
+  getEl('age-display').textContent = label;
+} // no heartbeat in 20s = treat as ended (watchdog beats every 5s while truly active)
 
 async function checkMonitorActive() {
   try {
@@ -2197,9 +2237,12 @@ async function loadWeather() {
 
     // Today's High and Tonight's Low come from the NWS forecast periods (predicted values for the day),
     // not from real-time hourly accounting. periods[0] = daytime "Today", periods[1] = "Tonight".
-    const todayPeriod   = periods.find(p => p.isDaytime  && p.name === 'Today')   || periods[0];
-    const tonightPeriod = periods.find(p => !p.isDaytime && p.name === 'Tonight') || periods[1];
-    const highTemp = todayPeriod   ? todayPeriod.temperature+'°F'   : '—';
+    // After ~6pm the NWS drops the "Today" period — fall back to the cached value from localStorage
+    // so Today's High always reflects what was predicted for today, not tonight's temperature.
+    const todayPeriod   = periods.find(p => p.isDaytime  && p.name === 'Today');
+    const tonightPeriod = periods.find(p => !p.isDaytime && p.name === 'Tonight') || periods.find(p => !p.isDaytime);
+    if (todayPeriod) localStorage.setItem('mmx_today_high', todayPeriod.temperature+'°F');
+    const highTemp = todayPeriod ? todayPeriod.temperature+'°F' : (localStorage.getItem('mmx_today_high') || '—');
     const lowTemp  = tonightPeriod ? tonightPeriod.temperature+'°F' : '—';
 
     const next3 = hourly.slice(0,3).map(h => ({
@@ -2270,6 +2313,7 @@ function init() {
   buildCheckPills();
   loadNote();
   loadEntries();
+  updateAgeDisplay();
   initSupabaseClient();
   selectedCamera = localStorage.getItem('mmx_camera') || 'rear';
   getEl('cam-toggle-btn').textContent = selectedCamera==='rear' ? '📷 Using Rear Camera' : '🤳 Using Front Camera';
