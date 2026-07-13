@@ -148,6 +148,7 @@
     .stream-status-bar { display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); font-family: var(--mono); font-size: 12px; color: var(--muted); }
     .stream-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background 0.3s; }
     .stream-dot.live { background: var(--danger); box-shadow: 0 0 6px rgba(240,100,100,0.6); animation: pulse 1.5s infinite; }
+    .stream-dot.active { background: var(--green); box-shadow: 0 0 6px rgba(80,200,120,0.6); }
     .stream-dot.watching { background: var(--accent); }
     .stream-dot.connecting { background: var(--warn); }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
@@ -260,6 +261,12 @@
     .status-pill { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: var(--mono); color: var(--muted); }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: background 0.3s; flex-shrink: 0; }
     .status-dot.ok { background: var(--accent); } .status-dot.err { background: var(--danger); }
+    .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 999px; transition: background 0.2s; }
+    .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: var(--muted); border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+    .toggle-switch input:checked + .toggle-slider { background: var(--green-dim); border-color: var(--green-border); }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); background: var(--green); }
     .version-display { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: center; padding: 0.5rem 0; }
 
     /* Modal */
@@ -491,9 +498,9 @@
       <span id="mon-viewer-count" style="margin-left:auto;font-size:11px;font-family:var(--mono);color:var(--muted)"></span>
     </div>
 
-    <!-- Idle: choose role -->
-    <div class="card" id="mon-card-idle">
-      <button class="call-btn green" id="mon-btn-start" onclick="startMonitor()">&#128247; Start Monitoring</button>
+    <!-- Idle: viewer-only button (monitor device auto-starts, never sees this) -->
+    <div class="card" id="mon-card-idle" style="display:none">
+      <button class="call-btn blue" onclick="startViewing()">&#128065; View Monitor</button>
     </div>
 
     <!-- Monitor (broadcaster) screen -->
@@ -526,7 +533,6 @@
       <button class="call-btn danger" onclick="stopViewing()">&#9632; Stop Viewing</button>
     </div>
 
-    <p class="stream-notice" id="mon-notice-text">Open this tab on any device to start monitoring, or view an active monitor.</p>
   </div>
 
   <!-- ══ WEATHER TAB ══ -->
@@ -549,11 +555,20 @@
       </div>
     </div>
     <div class="card">
+      <div class="status-row">
+        <p class="section-label" style="margin:0">This device is the monitor</p>
+        <label class="toggle-switch">
+          <input type="checkbox" id="mon-device-toggle" onchange="setMonitorDevice(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="card">
       <p class="section-label">App update</p>
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
     </div>
     <div class="card" style="text-align:center">
-      <div class="version-display">The MurDough Matrix v2.1</div>
+      <div class="version-display">The MurDough Matrix v2.2</div>
     </div>
   </div>
 
@@ -1612,8 +1627,16 @@ async function setMonitorSession(fields) {
 }
 
 // ── Idle / role selection ────────────────────────────────────
+function isMonitorDevice() { return localStorage.getItem('mmx_is_monitor') === 'true'; }
+
+function setMonitorDevice(enabled) {
+  localStorage.setItem('mmx_is_monitor', enabled ? 'true' : 'false');
+  if (enabled && !monRole) startMonitor();
+  else if (!enabled && monRole === 'monitor') stopMonitor();
+}
+
 async function pollMonitorPresence() {
-  if (monRole) return; // already broadcasting or viewing — handled by its own logic
+  if (monRole) return;
   const { active } = await checkMonitorActive();
   getEl('tab-monitor').classList.toggle('live-dot', active);
   if (getEl('panel-monitor').classList.contains('active')) {
@@ -1623,28 +1646,22 @@ async function pollMonitorPresence() {
 
 async function onMonitorTabOpen() {
   if (monRole) return;
+  if (isMonitorDevice()) { startMonitor(); return; }
   const { active } = await checkMonitorActive();
   showMonitorIdle(active);
 }
 
 function showMonitorIdle(monitorActive) {
-  getEl('mon-card-idle').style.display = 'block';
+  getEl('mon-card-idle').style.display = isMonitorDevice() ? 'none' : 'block';
   getEl('mon-card-broadcast').style.display = 'none';
   getEl('mon-card-broadcast-controls').style.display = 'none';
   getEl('mon-card-viewer').style.display = 'none';
   getEl('mon-card-viewer-controls').style.display = 'none';
   getEl('mon-viewer-count').textContent = '';
-  const btn = getEl('mon-btn-start');
   if (monitorActive) {
-    btn.textContent = '👀 View Monitor';
-    btn.className = 'call-btn blue';
-    btn.onclick = startViewing;
-    getEl('mon-status-text').textContent = 'Monitor active — tap to view';
-    getEl('mon-dot').className = 'stream-dot live';
+    getEl('mon-status-text').textContent = isMonitorDevice() ? 'Monitor active' : 'Monitor active — tap to view';
+    getEl('mon-dot').className = 'stream-dot active';
   } else {
-    btn.textContent = '📷 Start Monitoring';
-    btn.className = 'call-btn green';
-    btn.onclick = startMonitor;
     getEl('mon-status-text').textContent = 'No monitor active';
     getEl('mon-dot').className = 'stream-dot';
   }
@@ -1653,7 +1670,11 @@ function showMonitorIdle(monitorActive) {
 // ── Monitor (broadcaster) role ───────────────────────────────
 async function startMonitor() {
   try { monLocalStream = await getLocalStream(); }
-  catch (err) { showToast('Camera/mic access denied'); return; }
+  catch (err) {
+    showToast('Camera/mic access denied');
+    showMonitorIdle(false);
+    return;
+  }
 
   monRole = 'monitor';
   monId = genId();
@@ -1669,7 +1690,6 @@ async function startMonitor() {
   getEl('mon-status-text').textContent = 'Broadcasting';
   getEl('mon-status-text').style.color = '';
   getEl('mon-dot').className = 'stream-dot live';
-  getEl('mon-notice-text').style.display = 'none';
   getEl('mon-btn-mute').textContent = '🔊 Mic On';
   getEl('mon-btn-mute').className = 'call-btn ctrl';
   getEl('mon-viewer-list').innerHTML = '';
@@ -1808,9 +1828,18 @@ function stopMonitor(displaced) {
   if (monWatchdogTimer) { clearInterval(monWatchdogTimer); monWatchdogTimer = null; }
   if (!displaced) setMonitorSession({ active:false, monitor_id:null, viewer_count:0 });
   monRole = null; monId = null;
-  if (displaced) showToast('Another device started monitoring');
-  showMonitorIdle(false);
-  pollMonitorPresence();
+  if (displaced) {
+    showToast('Another device started monitoring');
+    showMonitorIdle(false);
+    pollMonitorPresence();
+  } else if (isMonitorDevice()) {
+    // Manual stop on a dedicated monitor device — show idle briefly, then restart automatically.
+    showMonitorIdle(false);
+    setTimeout(() => { if (!monRole && isMonitorDevice()) startMonitor(); }, 2000);
+  } else {
+    showMonitorIdle(false);
+    pollMonitorPresence();
+  }
 }
 
 // ── Viewer role ───────────────────────────────────────────────
@@ -1825,7 +1854,6 @@ async function startViewing() {
   getEl('mon-card-idle').style.display = 'none';
   getEl('mon-card-viewer').style.display = 'block';
   getEl('mon-card-viewer-controls').style.display = 'block';
-  getEl('mon-notice-text').style.display = 'none';
   getEl('mon-status-text').textContent = 'Connecting…';
   getEl('mon-dot').className = 'stream-dot connecting';
   getEl('mon-no-stream-msg').style.display = 'flex';
@@ -2187,8 +2215,14 @@ function init() {
   initSupabaseClient();
   selectedCamera = localStorage.getItem('mmx_camera') || 'rear';
   getEl('cam-toggle-btn').textContent = selectedCamera==='rear' ? '📷 Using Rear Camera' : '🤳 Using Front Camera';
+  // Restore monitor-device toggle state
+  getEl('mon-device-toggle').checked = isMonitorDevice();
   pollStreamPresence();
-  pollMonitorPresence();
+  if (isMonitorDevice()) {
+    startMonitor();
+  } else {
+    pollMonitorPresence();
+  }
   initSliders();
   // Return to saved tab after update reload
   const returnTab = localStorage.getItem('mmx_return_tab');
