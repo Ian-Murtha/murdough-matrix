@@ -1623,7 +1623,7 @@ async function setMonitorSession(fields) {
     if (rows && rows.length) {
       await sbFetch(`monitor_session?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({...fields, updated_at:new Date().toISOString()}) });
     }
-  } catch (err) {}
+  } catch (err) { console.error('setMonitorSession failed:', err); }
 }
 
 // ── Idle / role selection ────────────────────────────────────
@@ -1844,7 +1844,12 @@ function stopMonitor(displaced) {
 
 // ── Viewer role ───────────────────────────────────────────────
 async function startViewing() {
-  const { active, monitorId } = await checkMonitorActive();
+  let { active, monitorId } = await checkMonitorActive();
+  // Retry once after a short delay in case the monitor just started and hasn't written to DB yet.
+  if (!active || !monitorId) {
+    await new Promise(r => setTimeout(r, 2000));
+    ({ active, monitorId } = await checkMonitorActive());
+  }
   if (!active || !monitorId) { showToast('No monitor active'); showMonitorIdle(false); return; }
 
   monRole = 'viewer';
