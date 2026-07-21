@@ -987,14 +987,51 @@ function downloadCSV(lines, filename) {
   const a   = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download=filename; a.click();
 }
 
+const BIRTH_DATE = new Date('2026-05-20T00:00:00');
+
+function updateAgeDisplay() {
+  const now = new Date();
+  const totalDays = Math.floor((now - BIRTH_DATE) / (1000 * 60 * 60 * 24));
+  if (totalDays < 0) { getEl('age-display').textContent = ''; return; }
+
+  let label;
+  if (totalDays < 30) {
+    const weeks = Math.floor(totalDays / 7);
+    const days  = totalDays % 7;
+    label = weeks > 0
+      ? `${weeks} week${weeks!==1?'s':''}, ${days} day${days!==1?'s':''}`
+      : `${days} day${days!==1?'s':''}`;
+  } else {
+    let months = (now.getFullYear() - BIRTH_DATE.getFullYear()) * 12 + (now.getMonth() - BIRTH_DATE.getMonth());
+    if (now.getDate() < BIRTH_DATE.getDate()) months--;
+    if (months < 24) {
+      const afterMonths = new Date(BIRTH_DATE);
+      afterMonths.setMonth(afterMonths.getMonth() + months);
+      const remDays = Math.floor((now - afterMonths) / (1000 * 60 * 60 * 24));
+      const weeks   = Math.floor(remDays / 7);
+      const days    = remDays % 7;
+      const parts   = [`${months} month${months!==1?'s':''}`];
+      if (weeks > 0) parts.push(`${weeks} week${weeks!==1?'s':''}`);
+      if (days  > 0) parts.push(`${days} day${days!==1?'s':''}`);
+      label = parts.join(', ');
+    } else {
+      const years  = Math.floor(months / 12);
+      const remMon = months % 12;
+      label = remMon > 0
+        ? `${years} year${years!==1?'s':''}, ${remMon} month${remMon!==1?'s':''}`
+        : `${years} year${years!==1?'s':''}`;
+    }
+  }
+  getEl('age-display').textContent = label;
+}
+
 // ── Init ─────────────────────────────────────────────────────
 function init() {
   buildCheckPills();
+  initSupabaseClient();
   loadNote();
   loadEntries();
   updateAgeDisplay();
-  initSupabaseClient();
-  loadMedia();
   // Return to saved tab after update reload
   const returnTab = localStorage.getItem('mmx_return_tab');
   if (returnTab) {
