@@ -490,15 +490,13 @@ function resetForm() {
 }
 
 function switchTab(name) {
-  const names = ['baby','bp','monitor','stream','media','weather','settings'];
+  const names = ['baby','bp','media','weather','settings'];
   document.querySelectorAll('.tab').forEach((btn,i) => btn.classList.toggle('active', names[i]===name));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   getEl('panel-'+name).classList.add('active');
   if (name==='weather') loadWeather();
   if (name==='bp')      loadBP();
   if (name==='media')   loadMedia();
-  if (name==='stream')  onStreamTabOpen();
-  if (name==='monitor') onMonitorTabOpen();
 }
 
 // ── Supabase REST ────────────────────────────────────────────
