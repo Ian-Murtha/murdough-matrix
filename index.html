@@ -317,6 +317,30 @@
   </div>
 
 
+  <!-- ══ MEDIA TAB ══ -->
+  <div class="panel" id="panel-media">
+    <div class="media-notice">&#9432; Videos are limited to 15 seconds. All media is shared between users.</div>
+    <div class="card">
+      <div class="storage-bar-wrap">
+        <div class="storage-bar-label"><span>Storage used</span><span id="storage-label">—</span></div>
+        <div class="storage-bar-track"><div class="storage-bar-fill" id="storage-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="upload-area" onclick="getEl('file-input').click()">
+        <input type="file" id="file-input" accept="image/*,video/*" onchange="handleUpload(event)">
+        <div class="upload-icon">📷</div>
+        <div class="upload-text"><strong>Tap to upload</strong> a photo or video</div>
+      </div>
+      <div class="upload-progress" id="upload-progress" style="margin-top:0.75rem;display:none"></div>
+    </div>
+    <div class="card">
+      <div class="log-header">
+        <p class="section-label" style="margin:0">Gallery</p>
+        <button class="refresh-btn" onclick="loadMedia()">&#8635;</button>
+      </div>
+      <div class="media-grid" id="media-grid"><div class="empty-state" style="grid-column:span 2">No media yet</div></div>
+    </div>
+  </div>
+
   <!-- ══ WEATHER TAB ══ -->
   <div class="panel" id="panel-weather">
     <div class="card">
