@@ -37,6 +37,8 @@
     .app-header { flex-shrink: 0; padding: 1rem 1rem 0; }
     .app-title { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; text-align: center; margin-bottom: 0.75rem; }
     .tabs { display: flex; gap: 3px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 4px; overflow-x: auto; }
+    .tab.dragging { opacity: 0.4; border-style: dashed; }
+    .tab.drag-over { border-color: var(--accent); background: var(--accent-dim); }
     .tab { flex: 1; min-width: 0; padding: 8px 2px; border: none; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; border-radius: 6px; transition: background 0.15s, color 0.15s; white-space: nowrap; }
     .tab.active { background: var(--surface2); color: var(--text); }
     .tab.live-dot::after { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--danger); margin-left: 4px; vertical-align: middle; }
@@ -199,9 +201,6 @@
 
     /* Settings */
     .status-row { display: flex; align-items: center; justify-content: space-between; }
-    .status-pill { display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: var(--mono); color: var(--muted); }
-    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: background 0.3s; flex-shrink: 0; }
-    .status-dot.ok { background: var(--accent); } .status-dot.err { background: var(--danger); }
     .version-display { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: center; padding: 0.5rem 0; }
 
     /* Modal */
@@ -234,13 +233,7 @@
 
 <div class="app-header">
   <div class="app-title">The MurDough Matrix</div>
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('baby')">Baby</button>
-    <button class="tab" onclick="switchTab('bp')">BP</button>
-    <button class="tab" onclick="switchTab('media')">Media</button>
-    <button class="tab" onclick="switchTab('weather')">Weather</button>
-    <button class="tab" onclick="switchTab('settings')">Settings</button>
-  </div>
+  <div class="tabs" id="tabs-container"></div>
 </div>
 
 <main>
@@ -351,21 +344,9 @@
 
   <!-- ══ SETTINGS TAB ══ -->
   <div class="panel" id="panel-settings">
-    <div class="card">
-      <div class="status-row">
-        <p class="section-label" style="margin:0">Connection</p>
-        <div class="status-pill">
-          <span class="status-dot" id="sdot"></span>
-          <span id="stext">—</span>
-        </div>
-      </div>
-    </div>
-    <div class="card">
-      <p class="section-label">App update</p>
-      <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-    </div>
     <div class="card" style="text-align:center">
-      <div class="version-display">The MurDough Matrix v2.3</div>
+      <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v2.4</div>
     </div>
   </div>
 
@@ -472,10 +453,6 @@ function localToTs(v)  { return v.replace('T',' ')+':00'; }
 function escHtml(s)    { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function vibrate()     { if (navigator.vibrate) navigator.vibrate(40); }
 
-function setStatus(state, msg) {
-  getEl('sdot').className = 'status-dot'+(state==='ok'?' ok':state==='err'?' err':'');
-  getEl('stext').textContent = msg;
-}
 function showToast(msg) {
   const t = getEl('toast'); t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2200);
@@ -513,14 +490,83 @@ function resetForm() {
   FIELDS.forEach(f => { checks[f.key]=false; getEl('pill-'+f.key).classList.remove('on'); getEl('icon-'+f.key).textContent=''; });
 }
 
+// ── Tab order & drag-reorder ──────────────────────────────────
+const DEFAULT_TAB_ORDER = ['baby','bp','media','weather','settings'];
+const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', weather:'Weather', settings:'Settings' };
+const LOAD_FNS   = { weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia() };
+
+let tabOrder     = JSON.parse(localStorage.getItem('mmx_tab_order') || 'null') || [...DEFAULT_TAB_ORDER];
+let activeTab    = 'baby';
+let dragSrcIdx   = null;
+
+function saveTabOrder() { localStorage.setItem('mmx_tab_order', JSON.stringify(tabOrder)); }
+
+function renderTabs() {
+  const container = getEl('tabs-container');
+  container.innerHTML = '';
+  tabOrder.forEach((name, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (name === activeTab ? ' active' : '');
+    btn.textContent = TAB_LABELS[name];
+    btn.dataset.name = name;
+    btn.dataset.idx  = idx;
+
+    // Normal tap — switch tab
+    btn.addEventListener('click', () => switchTab(name));
+
+    // Long press — enable drag mode on this button
+    let longPressTimer = null;
+    const startLongPress = () => {
+      longPressTimer = setTimeout(() => {
+        btn.draggable = true;
+        btn.classList.add('dragging');
+        if (navigator.vibrate) navigator.vibrate(40);
+      }, 500);
+    };
+    const cancelLongPress = () => { clearTimeout(longPressTimer); };
+
+    btn.addEventListener('mousedown',  startLongPress);
+    btn.addEventListener('touchstart', startLongPress, { passive: true });
+    btn.addEventListener('mouseup',    cancelLongPress);
+    btn.addEventListener('mouseleave', cancelLongPress);
+    btn.addEventListener('touchend',   cancelLongPress);
+
+    // Drag events
+    btn.addEventListener('dragstart', e => {
+      dragSrcIdx = idx;
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    btn.addEventListener('dragend', () => {
+      btn.draggable = false;
+      btn.classList.remove('dragging');
+      container.querySelectorAll('.tab').forEach(b => b.classList.remove('drag-over'));
+      dragSrcIdx = null;
+    });
+    btn.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      container.querySelectorAll('.tab').forEach(b => b.classList.remove('drag-over'));
+      btn.classList.add('drag-over');
+    });
+    btn.addEventListener('drop', e => {
+      e.preventDefault();
+      if (dragSrcIdx === null || dragSrcIdx === idx) return;
+      const moved = tabOrder.splice(dragSrcIdx, 1)[0];
+      tabOrder.splice(idx, 0, moved);
+      saveTabOrder();
+      renderTabs();
+    });
+
+    container.appendChild(btn);
+  });
+}
+
 function switchTab(name) {
-  const names = ['baby','bp','media','weather','settings'];
-  document.querySelectorAll('.tab').forEach((btn,i) => btn.classList.toggle('active', names[i]===name));
+  activeTab = name;
+  renderTabs();
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   getEl('panel-'+name).classList.add('active');
-  if (name==='weather') loadWeather();
-  if (name==='bp')      loadBP();
-  if (name==='media')   loadMedia();
+  if (LOAD_FNS[name]) LOAD_FNS[name]();
 }
 
 // ── Supabase REST ────────────────────────────────────────────
@@ -606,18 +652,17 @@ async function logEntry() {
   try {
     await sbFetch('baby_log?select=id', { method:'POST', prefer:'return=minimal', body:JSON.stringify(payload) });
     vibrate(); resetForm(); await loadEntries(); showToast('Entry logged');
-  } catch (err) { setStatus('err','Save failed'); showToast('Error: '+err.message); }
+  } catch (err) { showToast('Error: '+err.message); }
   finally { btn.disabled = false; }
 }
 
 async function loadEntries() {
-  setStatus('','Loading…');
   try {
     const since = sevenDayCutoff();
     const rows  = await sbFetch(`baby_log?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=500`);
     allEntries  = rows || [];
-    renderList(allEntries); updateLastBar(allEntries); buildSummary(); setStatus('ok','Live');
-  } catch (err) { setStatus('err','Error'); getEl('log-body').innerHTML='<div class="empty-state">Could not load</div>'; }
+    renderList(allEntries); updateLastBar(allEntries); buildSummary();
+  } catch (err) { getEl('log-body').innerHTML='<div class="empty-state">Could not load</div>'; }
 }
 
 function updateLastBar(rows) {
@@ -1049,6 +1094,7 @@ function updateAgeDisplay() {
 
 // ── Init ─────────────────────────────────────────────────────
 function init() {
+  renderTabs();
   buildCheckPills();
   initSupabaseClient();
   loadNote();

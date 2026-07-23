@@ -60,37 +60,21 @@ create table shared_note (
 alter table shared_note enable row level security;
 create policy "Allow all" on shared_note for all using (true) with check (true);
 
--- Stream (two-way call) presence — WebRTC signalling itself runs over a
--- Supabase Realtime broadcast channel, not this table. This table just
--- tracks whether someone is currently live.
-create table stream_session (
+-- Weather cache (single row — stores Today's High across devices and page reloads)
+create table weather_cache (
   id         bigint generated always as identity primary key,
-  active     boolean default false,
-  updated_at timestamptz default now()
+  today_high int,
+  date       text,
+  created_at timestamptz default now()
 );
-alter table stream_session enable row level security;
-create policy "Allow all" on stream_session for all using (true) with check (true);
-insert into stream_session (active) values (false);
-
--- Monitor presence — same idea as stream_session, plus who's currently
--- broadcasting and how many viewers are connected. Per-viewer state
--- (talking indicator, etc.) is handled live over Realtime and never
--- written to the database.
-create table monitor_session (
-  id           bigint generated always as identity primary key,
-  active       boolean default false,
-  monitor_id   text,
-  viewer_count int default 0,
-  updated_at   timestamptz default now()
-);
-alter table monitor_session enable row level security;
-create policy "Allow all" on monitor_session for all using (true) with check (true);
-insert into monitor_session (active, viewer_count) values (false, 0);
+alter table weather_cache enable row level security;
+create policy "Allow all" on weather_cache for all using (true) with check (true);
+insert into weather_cache (today_high, date) values (null, null);
 ```
 
-> The app only ever **updates** the single row in `stream_session` and `monitor_session` — it never inserts a new one — so each table needs exactly one seed row, which the `insert` lines above create. If you ever truncate or recreate these tables, re-run the matching `insert` line or Stream/Monitor presence checks will silently do nothing.
+> If your project already has these tables from an earlier version of the app, only run the `create table` lines for tables you're missing — Supabase will error on tables that already exist, which is safe to ignore.
 >
-> If your project already has these tables from an earlier version of the app, only run the `create table` / `insert` lines for tables you're missing — Supabase will error on tables or rows that already exist, which is safe to ignore.
+> If you previously created `stream_session` or `monitor_session` tables (used by older versions of this app), you can safely drop them: `drop table stream_session; drop table monitor_session;`
 
 ### Storage bucket for Media
 
