@@ -1,5 +1,7 @@
-const CACHE = 'baby-log-v1';
-const ASSETS = ['/', '/index.html', '/manifest.json'];
+// Cache name is tied to the app version — bump this with every build so
+// devices automatically drop the old cache and fetch fresh files.
+const CACHE = 'murdough-matrix-v2.3';
+const ASSETS = ['/murdough-matrix/', '/murdough-matrix/index.html', '/murdough-matrix/manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -17,9 +19,29 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
+// Periodic background update check — every hour, ask the browser to check
+// whether a new sw.js has been deployed. If found, the new worker installs
+// silently and takes over on the next page load (no user action needed).
+self.addEventListener('activate', () => {
+  setInterval(() => self.registration.update(), 60 * 60 * 1000);
+});
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   if (e.request.url.includes('supabase.co')) return;
+  // For index.html: network-first so updates are picked up immediately on refresh.
+  if (e.request.url.endsWith('/murdough-matrix/') || e.request.url.endsWith('/index.html')) {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
   if (e.request.url.includes('fonts.googleapis.com') || e.request.url.includes('fonts.gstatic.com')) {
     e.respondWith(
       caches.open(CACHE).then(c =>

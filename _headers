@@ -1,0 +1,15 @@
+# Tell browsers to always revalidate index.html before serving from cache.
+# This means a normal page refresh always picks up the latest deployed version,
+# independent of the service worker cache.
+/murdough-matrix/
+  Cache-Control: no-cache, must-revalidate
+
+/murdough-matrix/index.html
+  Cache-Control: no-cache, must-revalidate
+
+# Allow long-lived caching for versioned/static assets.
+/murdough-matrix/manifest.json
+  Cache-Control: public, max-age=86400
+
+/murdough-matrix/sw.js
+  Cache-Control: no-cache, must-revalidate
