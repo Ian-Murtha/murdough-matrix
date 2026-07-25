@@ -155,7 +155,7 @@
     input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); cursor: pointer; }
 
     /* Media */
-    .media-notice { background: var(--warn-dim); border: 1px solid var(--warn-border); border-radius: var(--r-sm); padding: 0.75rem 1rem; font-size: 12px; font-family: var(--mono); color: var(--warn); }
+    .media-notice { display:none; }
     .upload-area { border: 1.5px dashed var(--border2); border-radius: var(--r-sm); padding: 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
     .upload-area:hover { border-color: var(--accent-border); background: var(--accent-dim); }
     .upload-area input { display: none; }
@@ -312,7 +312,6 @@
 
   <!-- ══ MEDIA TAB ══ -->
   <div class="panel" id="panel-media">
-    <div class="media-notice">&#9432; Videos are limited to 15 seconds. All media is shared between users.</div>
     <div class="card">
       <div class="storage-bar-wrap">
         <div class="storage-bar-label"><span>Storage used</span><span id="storage-label">—</span></div>
@@ -346,7 +345,7 @@
   <div class="panel" id="panel-settings">
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v2.4</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v2.5</div>
     </div>
   </div>
 
@@ -509,29 +508,25 @@ function renderTabs() {
     btn.className = 'tab' + (name === activeTab ? ' active' : '');
     btn.textContent = TAB_LABELS[name];
     btn.dataset.name = name;
-    btn.dataset.idx  = idx;
+    btn.dataset.idx  = String(idx);
 
-    // Normal tap — switch tab
-    btn.addEventListener('click', () => switchTab(name));
-
-    // Long press — enable drag mode on this button
+    // ── Desktop drag-and-drop ─────────────────────────────────
     let longPressTimer = null;
-    const startLongPress = () => {
+    const startLongPress = (isTouch) => {
       longPressTimer = setTimeout(() => {
-        btn.draggable = true;
-        btn.classList.add('dragging');
+        if (!isTouch) {
+          btn.draggable = true;
+          btn.classList.add('dragging');
+        }
         if (navigator.vibrate) navigator.vibrate(40);
       }, 500);
     };
-    const cancelLongPress = () => { clearTimeout(longPressTimer); };
+    const cancelLongPress = () => clearTimeout(longPressTimer);
 
-    btn.addEventListener('mousedown',  startLongPress);
-    btn.addEventListener('touchstart', startLongPress, { passive: true });
+    btn.addEventListener('mousedown',  () => startLongPress(false));
     btn.addEventListener('mouseup',    cancelLongPress);
     btn.addEventListener('mouseleave', cancelLongPress);
-    btn.addEventListener('touchend',   cancelLongPress);
 
-    // Drag events
     btn.addEventListener('dragstart', e => {
       dragSrcIdx = idx;
       e.dataTransfer.effectAllowed = 'move';
@@ -556,6 +551,83 @@ function renderTabs() {
       saveTabOrder();
       renderTabs();
     });
+
+    // ── Touch drag (mobile) ───────────────────────────────────
+    let touchDragging = false;
+    let touchClone    = null;
+
+    btn.addEventListener('touchstart', e => {
+      startLongPress(true);
+      const touch = e.touches[0];
+      let moved = false;
+
+      const onMove = mv => {
+        const t = mv.touches[0];
+        if (!moved && Math.abs(t.clientX - touch.clientX) < 5 && Math.abs(t.clientY - touch.clientY) < 5) return;
+        moved = true;
+        clearTimeout(longPressTimer);
+
+        if (!touchDragging) {
+          touchDragging = true;
+          dragSrcIdx = idx;
+          btn.classList.add('dragging');
+          if (navigator.vibrate) navigator.vibrate(40);
+          // Create a floating clone to follow the finger
+          touchClone = btn.cloneNode(true);
+          touchClone.style.cssText = `position:fixed;pointer-events:none;opacity:0.85;z-index:9999;
+            width:${btn.offsetWidth}px;top:${btn.getBoundingClientRect().top}px;
+            left:${btn.getBoundingClientRect().left}px;`;
+          document.body.appendChild(touchClone);
+        }
+
+        mv.preventDefault();
+        if (touchClone) {
+          touchClone.style.left = (t.clientX - btn.offsetWidth / 2) + 'px';
+          touchClone.style.top  = (t.clientY - btn.offsetHeight / 2) + 'px';
+        }
+
+        // Highlight the tab we're hovering over
+        container.querySelectorAll('.tab').forEach(b => b.classList.remove('drag-over'));
+        const el = document.elementFromPoint(t.clientX, t.clientY);
+        const overBtn = el?.closest('.tab');
+        if (overBtn && overBtn !== btn) overBtn.classList.add('drag-over');
+      };
+
+      const onEnd = ev => {
+        clearTimeout(longPressTimer);
+        btn.removeEventListener('touchmove', onMove);
+        btn.removeEventListener('touchend',  onEnd);
+
+        if (touchClone) { touchClone.remove(); touchClone = null; }
+        btn.classList.remove('dragging');
+        container.querySelectorAll('.tab').forEach(b => b.classList.remove('drag-over'));
+
+        if (touchDragging) {
+          touchDragging = false;
+          const t = ev.changedTouches[0];
+          const el = document.elementFromPoint(t.clientX, t.clientY);
+          const overBtn = el?.closest('.tab');
+          if (overBtn && overBtn !== btn) {
+            const destIdx = parseInt(overBtn.dataset.idx);
+            if (!isNaN(destIdx) && destIdx !== dragSrcIdx) {
+              const moved = tabOrder.splice(dragSrcIdx, 1)[0];
+              tabOrder.splice(destIdx, 0, moved);
+              saveTabOrder();
+              renderTabs();
+            }
+          }
+          dragSrcIdx = null;
+        } else if (!moved) {
+          switchTab(name);
+        }
+      };
+
+      btn.addEventListener('touchmove', onMove, { passive: false });
+      btn.addEventListener('touchend',  onEnd);
+    }, { passive: true });
+
+    // Click for desktop (only fires if not dragging)
+    btn.addEventListener('click', () => { if (!touchDragging) switchTab(name); });
 
     container.appendChild(btn);
   });
@@ -866,16 +938,6 @@ function renderMediaGrid(files) {
 async function handleUpload(event) {
   const file = event.target.files[0]; if (!file) return;
   const isVideo = file.type.startsWith('video/');
-  if (isVideo) {
-    try {
-      await new Promise((resolve,reject) => {
-        const v=document.createElement('video'); v.preload='metadata';
-        v.onloadedmetadata=()=>{ URL.revokeObjectURL(v.src); v.duration>15?reject(new Error('too_long')):resolve(); };
-        v.onerror=()=>reject(new Error('load_error'));
-        v.src=URL.createObjectURL(file);
-      });
-    } catch (err) { showToast(err.message==='too_long'?'Video must be 15 seconds or less':'Could not read video'); event.target.value=''; return; }
-  }
   const progress=getEl('upload-progress'); progress.style.display='block'; progress.textContent='Uploading…';
   const filename=`${Date.now()}.${file.name.split('.').pop()}`;
   try {
