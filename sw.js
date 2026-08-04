@@ -1,6 +1,6 @@
 // Cache name is tied to the app version — bump this with every build so
 // devices automatically drop the old cache and fetch fresh files.
-const CACHE = 'murdough-matrix-v2.5';
+const CACHE = 'murdough-matrix-v2.6';
 const ASSETS = ['/murdough-matrix/', '/murdough-matrix/index.html', '/murdough-matrix/manifest.json'];
 
 self.addEventListener('install', e => {

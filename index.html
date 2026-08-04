@@ -345,7 +345,7 @@
   <div class="panel" id="panel-settings">
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v2.5</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v2.6</div>
     </div>
   </div>
 
@@ -664,7 +664,7 @@ async function storageFetch(path, options={}) {
 // ── Shared note ──────────────────────────────────────────────
 async function loadNote() {
   try {
-    const rows = await sbFetch('shared_note?order=id.desc&limit=1');
+    const rows = await sbFetch('mmx_note?order=id.desc&limit=1');
     const display = getEl('note-display'), input = getEl('note-input');
     if (rows && rows.length && rows[0].note?.trim()) {
       display.textContent = rows[0].note; display.classList.remove('empty');
@@ -700,11 +700,11 @@ function toggleNoteEdit() {
 
 async function saveNote(text) {
   try {
-    const rows = await sbFetch('shared_note?order=id.desc&limit=1');
+    const rows = await sbFetch('mmx_note?order=id.desc&limit=1');
     if (rows && rows.length) {
-      await sbFetch(`shared_note?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({ note:text }) });
+      await sbFetch(`mmx_note?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({ note:text }) });
     } else {
-      await sbFetch('shared_note', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ note:text }) });
+      await sbFetch('mmx_note', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ note:text }) });
     }
     getEl('note-saving').textContent = '✓';
     setTimeout(() => { getEl('note-saving').textContent = ''; }, 1500);
@@ -722,7 +722,7 @@ async function logEntry() {
   const payload = { ts:nowTs(), amount:amtRaw||null, notes:getEl('notes-input').value.trim()||null };
   FIELDS.forEach(f => { payload[f.dbKey] = checks[f.key]; });
   try {
-    await sbFetch('baby_log?select=id', { method:'POST', prefer:'return=minimal', body:JSON.stringify(payload) });
+    await sbFetch('mmx_baby?select=id', { method:'POST', prefer:'return=minimal', body:JSON.stringify(payload) });
     vibrate(); resetForm(); await loadEntries(); showToast('Entry logged');
   } catch (err) { showToast('Error: '+err.message); }
   finally { btn.disabled = false; }
@@ -731,7 +731,7 @@ async function logEntry() {
 async function loadEntries() {
   try {
     const since = sevenDayCutoff();
-    const rows  = await sbFetch(`baby_log?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=500`);
+    const rows  = await sbFetch(`mmx_baby?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=500`);
     allEntries  = rows || [];
     renderList(allEntries); updateLastBar(allEntries); buildSummary();
   } catch (err) { getEl('log-body').innerHTML='<div class="empty-state">Could not load</div>'; }
@@ -787,7 +787,7 @@ function renderList(rows) {
 async function deleteEntry(id) {
   if (!confirm('Delete this entry?')) return;
   try {
-    await sbFetch(`baby_log?id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' });
+    await sbFetch(`mmx_baby?id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' });
     allEntries = allEntries.filter(r => r.id!==id);
     renderList(allEntries); updateLastBar(allEntries); buildSummary(); showToast('Entry deleted');
   } catch (err) { showToast('Delete failed'); }
@@ -808,7 +808,7 @@ async function saveEdit() {
   const payload = { ts:localToTs(getEl('edit-ts').value), amount:getEl('edit-amt').value.trim()||null, notes:getEl('edit-notes').value.trim()||null };
   FIELDS.forEach(f => { payload[f.dbKey]=echecks[f.key]; });
   try {
-    await sbFetch(`baby_log?id=eq.${editingId}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify(payload) });
+    await sbFetch(`mmx_baby?id=eq.${editingId}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify(payload) });
     closeEdit(); await loadEntries(); showToast('Entry updated');
   } catch (err) { showToast('Update failed: '+err.message); }
 }
@@ -838,7 +838,7 @@ async function logBP() {
   if (!sys||!dia) { showToast('Enter both Sys and Dia'); return; }
   const btn=getEl('bp-btn'); btn.disabled=true;
   try {
-    await sbFetch('bp_log?select=id', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ts:nowTs(), sys, dia }) });
+    await sbFetch('mmx_bp?select=id', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ts:nowTs(), sys, dia }) });
     vibrate(); getEl('bp-sys').value=''; getEl('bp-dia').value='';
     await loadBP(); showToast('BP reading logged');
   } catch (err) { showToast('Error: '+err.message); }
@@ -848,7 +848,7 @@ async function logBP() {
 async function loadBP() {
   try {
     const since = sevenDayCutoff();
-    const rows  = await sbFetch(`bp_log?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=200`);
+    const rows  = await sbFetch(`mmx_bp?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=200`);
     allBP = rows||[]; renderBP(allBP); buildBPChart(allBP);
   } catch (err) { console.error('loadBP failed:', err); getEl('bp-body').innerHTML='<div class="empty-state">Could not load</div>'; }
 }
@@ -890,7 +890,7 @@ function buildBPChart(rows) {
 async function deleteBP(id) {
   if (!confirm('Delete this reading?')) return;
   try {
-    await sbFetch(`bp_log?id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' });
+    await sbFetch(`mmx_bp?id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' });
     allBP=allBP.filter(r=>r.id!==id); renderBP(allBP); buildBPChart(allBP); showToast('Reading deleted');
   } catch (err) { showToast('Delete failed'); }
 }
@@ -1021,21 +1021,21 @@ async function loadWeather() {
     if (todayPeriod) {
       highTemp = todayPeriod.temperature + '°F';
       try {
-        const rows = await sbFetch('weather_cache?order=id.asc&limit=1');
+        const rows = await sbFetch('mmx_weather?order=id.asc&limit=1');
         if (rows && rows.length) {
-          await sbFetch(`weather_cache?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({ today_high: todayPeriod.temperature, date: new Date().toISOString().slice(0,10) }) });
+          await sbFetch(`mmx_weather?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({ today_high: todayPeriod.temperature, date: new Date().toISOString().slice(0,10) }) });
         }
-      } catch(e) { console.error('weather_cache write failed:', e); }
+      } catch(e) { console.error('mmx_weather write failed:', e); }
     } else {
       try {
-        const rows = await sbFetch('weather_cache?order=id.asc&limit=1');
+        const rows = await sbFetch('mmx_weather?order=id.asc&limit=1');
         if (rows && rows.length) {
           const cached = rows[0];
           const isToday = cached.date === new Date().toISOString().slice(0,10);
           const cachedHigher = cached.today_high != null && cached.today_high >= tempF;
           if (isToday && cachedHigher) highTemp = cached.today_high + '°F';
         }
-      } catch(e) { console.error('weather_cache read failed:', e); }
+      } catch(e) { console.error('mmx_weather read failed:', e); }
     }
 
     const next6 = hourly.slice(0,6).map(h => ({
@@ -1100,14 +1100,14 @@ async function checkForUpdate() {
 
 // ── CSV Exports ───────────────────────────────────────────────
 async function exportBabyCSV() {
-  const rows = await sbFetch('baby_log?order=ts.desc&limit=5000');
+  const rows = await sbFetch('mmx_baby?order=ts.desc&limit=5000');
   if (!rows||!rows.length) { showToast('No entries'); return; }
   const lines = [['Timestamp','Amount','Notes',...FIELDS.map(f=>f.label)],
     ...rows.map(r=>[r.ts,r.amount||'',r.notes||'',...FIELDS.map(f=>r[f.dbKey]?'Yes':'No')])];
   downloadCSV(lines, 'baby_log_'+new Date().toISOString().slice(0,10)+'.csv');
 }
 async function exportBPCSV() {
-  const rows = await sbFetch('bp_log?order=ts.desc&limit=5000');
+  const rows = await sbFetch('mmx_bp?order=ts.desc&limit=5000');
   if (!rows||!rows.length) { showToast('No BP entries'); return; }
   downloadCSV([['Timestamp','Sys','Dia'],...rows.map(r=>[r.ts,r.sys,r.dia])], 'bp_log_'+new Date().toISOString().slice(0,10)+'.csv');
 }
