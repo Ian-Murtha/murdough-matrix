@@ -341,11 +341,20 @@
     </div>
   </div>
 
+  <!-- ══ COMMBADGE TAB ══ -->
+  <div class="panel" id="panel-commbadge" style="padding:0">
+    <iframe id="commbadge-frame"
+      src="https://ian-murtha.github.io/commbadge/?embed=1"
+      allow="camera; microphone"
+      style="width:100%;height:calc(100dvh - 140px);border:0;border-radius:var(--r-sm);background:transparent">
+    </iframe>
+  </div>
+
   <!-- ══ SETTINGS TAB ══ -->
   <div class="panel" id="panel-settings">
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v2.6</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v2.7</div>
     </div>
   </div>
 
@@ -490,15 +499,33 @@ function resetForm() {
 }
 
 // ── Tab order & drag-reorder ──────────────────────────────────
-const DEFAULT_TAB_ORDER = ['baby','bp','media','weather','settings'];
-const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', weather:'Weather', settings:'Settings' };
-const LOAD_FNS   = { weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia() };
+const DEFAULT_TAB_ORDER = ['baby','bp','media','commbadge','weather','settings'];
+const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', commbadge:'CommBadge', weather:'Weather', settings:'Settings' };
+const LOAD_FNS   = { weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => syncCommBadgeSettings() };
 
-let tabOrder     = JSON.parse(localStorage.getItem('mmx_tab_order') || 'null') || [...DEFAULT_TAB_ORDER];
+let tabOrder = JSON.parse(localStorage.getItem('mmx_tab_order') || 'null') || [...DEFAULT_TAB_ORDER];
+// Reconcile with defaults: append any new tabs (e.g. added in a later build) that aren't
+// in a device's already-saved order, so new tabs always appear without resetting the user's order.
+DEFAULT_TAB_ORDER.forEach(name => { if (!tabOrder.includes(name)) tabOrder.push(name); });
+// Also drop any saved tab names that no longer exist (e.g. removed tabs from past builds).
+tabOrder = tabOrder.filter(name => DEFAULT_TAB_ORDER.includes(name));
+saveTabOrderIfChanged();
+
 let activeTab    = 'baby';
 let dragSrcIdx   = null;
 
 function saveTabOrder() { localStorage.setItem('mmx_tab_order', JSON.stringify(tabOrder)); }
+function saveTabOrderIfChanged() { saveTabOrder(); }
+
+// Send lightweight settings (currently just selected camera, if MMX has one) into the
+// CommBadge iframe once it's ready. Harmless if CommBadge ignores or hasn't loaded yet.
+function syncCommBadgeSettings() {
+  const frame = getEl('commbadge-frame');
+  if (!frame || !frame.contentWindow) return;
+  const cam = localStorage.getItem('mmx_camera');
+  frame.contentWindow.postMessage({ source:'commbadge-host', type:'settings', selectedCamera: cam || undefined }, 'https://ian-murtha.github.io');
+}
+
 
 function renderTabs() {
   const container = getEl('tabs-container');
