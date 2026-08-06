@@ -350,11 +350,19 @@
     </iframe>
   </div>
 
+  <!-- ══ TRACKER TAB ══ -->
+  <div class="panel" id="panel-tracker" style="padding:0">
+    <iframe id="tracker-frame"
+      src="https://ian-murtha.github.io/mmx-todo-tracker/?embed=1"
+      style="width:100%;height:calc(100dvh - 140px);border:0;border-radius:var(--r-sm);background:transparent">
+    </iframe>
+  </div>
+
   <!-- ══ SETTINGS TAB ══ -->
   <div class="panel" id="panel-settings">
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v2.7</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v2.8</div>
     </div>
   </div>
 
@@ -499,8 +507,8 @@ function resetForm() {
 }
 
 // ── Tab order & drag-reorder ──────────────────────────────────
-const DEFAULT_TAB_ORDER = ['baby','bp','media','commbadge','weather','settings'];
-const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', commbadge:'CommBadge', weather:'Weather', settings:'Settings' };
+const DEFAULT_TAB_ORDER = ['baby','bp','media','commbadge','tracker','weather','settings'];
+const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', commbadge:'CommBadge', tracker:'Tracker', weather:'Weather', settings:'Settings' };
 const LOAD_FNS   = { weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => syncCommBadgeSettings() };
 
 let tabOrder = JSON.parse(localStorage.getItem('mmx_tab_order') || 'null') || [...DEFAULT_TAB_ORDER];
