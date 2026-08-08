@@ -55,18 +55,24 @@
     .section-label { font-size: 11px; font-family: var(--mono); color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.6rem; }
 
     /* Last entry bar */
-    .last-entry-bar { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 0.6rem 1rem; font-size: 12px; font-family: var(--mono); color: var(--muted); flex-shrink: 0; }
-    .last-entry-bar .since { color: var(--text); }
-
-    /* Note bar */
-    .note-bar-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 0.6rem 0.75rem; display: flex; align-items: center; gap: 8px; min-height: 42px; }
-    .note-bar-text { flex: 1; font-size: 13px; color: var(--text); line-height: 1.4; word-break: break-word; }
-    .note-bar-text.empty { color: var(--muted); font-style: italic; font-size: 12px; }
-    .note-bar-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-family: var(--sans); font-size: 13px; line-height: 1.4; resize: none; min-height: 20px; max-height: 80px; padding: 0; }
-    .note-bar-input::placeholder { color: var(--muted); font-style: italic; }
-    .note-edit-btn { flex-shrink: 0; background: transparent; border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--muted); font-family: var(--mono); font-size: 11px; padding: 4px 10px; cursor: pointer; transition: color 0.15s, border-color 0.15s; white-space: nowrap; }
-    .note-edit-btn:hover { color: var(--accent); border-color: var(--accent-border); }
-    .note-saving { font-family: var(--mono); font-size: 10px; color: var(--muted); flex-shrink: 0; }
+    .baby-date-header { font-size: 17px; font-weight: 600; text-align: center; color: var(--text); font-family: var(--mono); letter-spacing: 0.02em; }
+    .baby-btn-row { display: flex; gap: 8px; margin-bottom: 0.6rem; }
+    .baby-btn-row:last-child { margin-bottom: 0; }
+    .baby-action-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .baby-action-btn { flex: 1; padding: 13px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text); font-family: var(--mono); font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; -webkit-tap-highlight-color: transparent; }
+    .baby-action-btn:active { transform: scale(0.98); }
+    .baby-action-btn.on { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+    .baby-ts-box { min-height: 34px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; }
+    .ts-entry { font-family: var(--mono); font-size: 12px; color: var(--text); cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: background 0.15s; }
+    .ts-entry:hover { background: var(--surface2); }
+    .feed-slider { position: relative; background: var(--surface2); border: 1px solid var(--border); border-radius: 999px; height: 40px; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+    .feed-slider-track { position: absolute; inset: 3px; border-radius: 999px; }
+    .feed-slider-thumb { position: absolute; top: 3px; left: 3px; width: calc(50% - 3px); height: calc(100% - 6px); background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: 999px; transition: transform 0.2s; }
+    .feed-slider.formula .feed-slider-thumb { transform: translateX(100%); }
+    .feed-slider-labels { position: relative; display: flex; height: 100%; }
+    .feed-slider-labels span { flex: 1; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; color: var(--muted); z-index: 1; transition: color 0.2s; }
+    .feed-slider:not(.formula) .feed-slider-labels span:first-child { color: var(--accent); font-weight: 600; }
+    .feed-slider.formula .feed-slider-labels span:last-child { color: var(--accent); font-weight: 600; }
 
     /* Inputs */
     input[type="text"], input[type="number"], input[type="datetime-local"] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text); font-family: var(--sans); font-size: 15px; padding: 10px 12px; outline: none; transition: border-color 0.15s; -webkit-appearance: none; }
@@ -77,20 +83,6 @@
     input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
 
     /* Log form */
-    .amt-notes-row { display: flex; gap: 8px; margin-bottom: 1rem; }
-    .amt-notes-row .field-wrap { flex: 1; min-width: 0; }
-    .amt-notes-row .field-wrap label { display: block; font-size: 11px; font-family: var(--mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.4rem; }
-    .pumped-row { display: flex; justify-content: center; margin-bottom: 1rem; }
-    .option-group { display: flex; align-items: center; gap: 10px; margin-bottom: 0.6rem; }
-    .option-group:last-child { margin-bottom: 1.25rem; }
-    .group-label { font-size: 10px; font-family: var(--mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; width: 52px; flex-shrink: 0; text-align: right; }
-    .group-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-    .check-pill { display: flex; align-items: center; gap: 7px; padding: 9px 16px; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; font-size: 14px; color: var(--muted); background: transparent; transition: color 0.15s, border-color 0.15s, background 0.15s; user-select: none; -webkit-tap-highlight-color: transparent; }
-    .check-pill:active { transform: scale(0.97); }
-    .check-pill.on { color: var(--accent); border-color: var(--accent-border); background: var(--accent-dim); }
-    .check-icon { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 9px; }
-    .check-pill.on .check-icon { background: var(--accent); border-color: var(--accent); color: #0f1117; }
-
     /* Buttons */
     .log-btn { width: 100%; padding: 13px; background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: var(--r-sm); color: var(--accent); font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; transition: background 0.15s, transform 0.1s; margin-bottom: 0.75rem; }
     .log-btn:hover { background: rgba(168,240,198,0.18); } .log-btn:active { transform: scale(0.99); } .log-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -114,8 +106,6 @@
     .entry-actions { display: flex; gap: 4px; flex-shrink: 0; }
     .entry-line2 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .entry-amount { font-family: var(--mono); font-size: 12px; color: var(--text); }
-    .entry-checks { display: flex; gap: 6px; flex-wrap: wrap; }
-    .check-tag { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--accent-border); color: var(--accent); background: var(--accent-dim); }
     .act-btn { background: transparent; border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--muted); cursor: pointer; font-size: 11px; font-family: var(--mono); padding: 3px 8px; line-height: 1.4; transition: color 0.15s, border-color 0.15s; }
     .act-btn.edit:hover { color: var(--warn); border-color: var(--warn-border); }
     .act-btn.del:hover  { color: var(--danger); border-color: var(--danger-border); }
@@ -210,7 +200,6 @@
     .modal h3 { font-family: var(--mono); font-size: 13px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 1rem; }
     .modal-field { margin-bottom: 0.75rem; }
     .modal-field label { display: block; font-size: 11px; font-family: var(--mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.4rem; }
-    .modal-checks { display: flex; gap: 6px; flex-wrap: wrap; }
     .modal-actions { display: flex; gap: 8px; margin-top: 1rem; }
     .modal-save { flex: 1; padding: 11px; background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: var(--r-sm); color: var(--accent); font-family: var(--mono); font-size: 12px; cursor: pointer; }
     .modal-save:hover { background: rgba(168,240,198,0.2); }
@@ -227,6 +216,7 @@
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     @media (min-width: 480px) { .app-header, main { max-width: 480px; margin-left: auto; margin-right: auto; width: 100%; } }
+    @media (min-width: 480px) { main.wide-tab { max-width: 900px; } }
   </style>
 </head>
 <body>
@@ -236,49 +226,54 @@
   <div class="tabs" id="tabs-container"></div>
 </div>
 
-<main>
+<main id="main-content">
 
   <!-- ══ BABY TAB ══ -->
   <div class="panel active" id="panel-baby">
-    <div class="last-entry-bar" id="last-bar" style="display:none">
-      <span>Last entry</span>
-      <span class="since" id="since-text">—</span>
+    <div class="card" style="text-align:center">
+      <div class="baby-date-header" id="baby-date-header">—</div>
     </div>
-    <div class="note-bar-card">
-      <div class="note-bar-text empty" id="note-display">No note yet</div>
-      <textarea class="note-bar-input" id="note-input" placeholder="Type a shared note…" rows="1" style="display:none"></textarea>
-      <span class="note-saving" id="note-saving"></span>
-      <button class="note-edit-btn" id="note-edit-btn" onclick="toggleNoteEdit()">Edit</button>
-    </div>
+
     <div class="card">
-      <div class="amt-notes-row">
-        <div class="field-wrap"><label>Amount</label><input type="text" id="amt-input" placeholder="e.g. 60 mL"></div>
-        <div class="field-wrap"><label>Notes</label><input type="text" id="notes-input" placeholder="Optional"></div>
+      <div class="baby-btn-row">
+        <button class="baby-action-btn" onclick="openFeedingModal()">🍼 Feeding</button>
+        <button class="baby-action-btn" id="d3-btn" onclick="toggleD3()">💊 D3</button>
       </div>
-      <div class="option-group"><span class="group-label">Type</span><div class="group-pills" id="group-type"></div></div>
-      <div class="option-group"><span class="group-label">Diaper</span><div class="group-pills" id="group-diaper"></div></div>
-      <div class="option-group"><span class="group-label">Exercises</span><div class="group-pills" id="group-exercises"></div></div>
-      <div class="option-group"><span class="group-label">Other</span><div class="group-pills" id="group-other"></div></div>
-      <button class="log-btn" id="log-btn" onclick="logEntry()">+ Log entry</button>
-      <button class="export-btn" onclick="exportBabyCSV()">&#8659; Download baby log CSV</button>
-    </div>
-    <div class="card">
-      <div class="log-header">
-        <p class="section-label" style="margin:0">Last 24 hours</p>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="entry-count" id="entry-count">—</span>
-          <button class="refresh-btn" onclick="loadEntries()">&#8635;</button>
+      <div class="baby-btn-row">
+        <div class="baby-action-col">
+          <button class="baby-action-btn" onclick="logQuick('pumped')">🥛 Pumped</button>
+          <div class="baby-ts-box" id="pumped-ts-box"><div class="empty-state" style="padding:0.25rem 0">—</div></div>
+        </div>
+        <div class="baby-action-col">
+          <button class="baby-action-btn" onclick="logQuick('tummy')">🧘 Tummy</button>
+          <div class="baby-ts-box" id="tummy-ts-box"><div class="empty-state" style="padding:0.25rem 0">—</div></div>
         </div>
       </div>
-      <div class="entry-list" id="log-body"><div class="empty-state">Not connected</div></div>
     </div>
+
     <div class="card">
-      <p class="section-label">Rolling 24-hour totals</p>
-      <div class="ml-total-card"><div class="ml-num" id="ml-total">—</div><div class="ml-lbl">mL fed</div></div>
-      <div class="summary-grid" id="summary-grid"></div>
+      <p class="section-label">Today's totals</p>
+      <div class="ml-total-card"><div class="ml-num" id="baby-ml-total">—</div><div class="ml-lbl">mL fed</div></div>
+      <div class="summary-grid" style="grid-template-columns:repeat(2,1fr)">
+        <div class="summary-cell"><div class="num" id="baby-breast-total">0 mL</div><div class="lbl">Breast</div></div>
+        <div class="summary-cell"><div class="num" id="baby-formula-total">0 mL</div><div class="lbl">Formula</div></div>
+      </div>
     </div>
+
+    <div class="card">
+      <div class="log-header">
+        <p class="section-label" style="margin:0">Feeding log</p>
+        <button class="refresh-btn" onclick="loadBabyLog2()">&#8635;</button>
+      </div>
+      <div class="entry-list" id="feeding-log-body"><div class="empty-state">No feedings yet today</div></div>
+    </div>
+
     <div class="card" style="text-align:center">
       <div id="age-display" class="version-display" style="font-size:13px;color:var(--text)"></div>
+    </div>
+
+    <div class="card">
+      <button class="export-btn" onclick="exportBabyCSV()">&#8659; Download baby log CSV</button>
     </div>
   </div>
 
@@ -362,23 +357,47 @@
   <div class="panel" id="panel-settings">
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v2.8</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.0</div>
     </div>
   </div>
 
 </main>
 
-<!-- Edit entry modal -->
-<div class="modal-backdrop" id="edit-modal">
+<!-- Feeding modal -->
+<div class="modal-backdrop" id="feeding-modal">
+  <div class="modal">
+    <h3>Log Feeding</h3>
+    <div class="modal-field"><label>Amount (mL)</label><input type="number" id="feeding-amt" placeholder="e.g. 60"></div>
+    <div class="modal-field">
+      <label>Type</label>
+      <div class="feed-slider" id="feed-slider" onclick="handleFeedSliderClick(event,'feed')">
+        <div class="feed-slider-track"><div class="feed-slider-thumb"></div></div>
+        <div class="feed-slider-labels"><span>Breast</span><span>Formula</span></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeFeedingModal()">Cancel</button>
+      <button class="modal-save"   onclick="submitFeeding()">Log</button>
+    </div>
+  </div>
+</div>
+
+<!-- Entry edit modal (Feeding / Pumped / Tummy) -->
+<div class="modal-backdrop" id="entry2-edit-modal">
   <div class="modal">
     <h3>Edit entry</h3>
-    <div class="modal-field"><label>Timestamp</label><input type="datetime-local" id="edit-ts"></div>
-    <div class="modal-field"><label>Amount (mL)</label><input type="text" id="edit-amt" placeholder="e.g. 60 mL"></div>
-    <div class="modal-field"><label>Notes</label><input type="text" id="edit-notes" placeholder="Optional notes"></div>
-    <div class="modal-field"><label>Options</label><div class="modal-checks" id="edit-check-pills"></div></div>
+    <div class="modal-field"><label>Timestamp</label><input type="datetime-local" id="entry2-edit-ts"></div>
+    <div class="modal-field" id="entry2-edit-amt-wrap"><label>Amount (mL)</label><input type="number" id="entry2-edit-amt" placeholder="e.g. 60"></div>
+    <div class="modal-field" id="entry2-edit-type-wrap">
+      <label>Type</label>
+      <div class="feed-slider" id="entry2-edit-slider" onclick="handleFeedSliderClick(event,'edit')">
+        <div class="feed-slider-track"><div class="feed-slider-thumb"></div></div>
+        <div class="feed-slider-labels"><span>Breast</span><span>Formula</span></div>
+      </div>
+    </div>
     <div class="modal-actions">
-      <button class="modal-cancel" onclick="closeEdit()">Cancel</button>
-      <button class="modal-save"   onclick="saveEdit()">Save changes</button>
+      <button class="modal-cancel" onclick="deleteEntry2FromModal()">Delete</button>
+      <button class="modal-save"   onclick="saveEntry2Edit()">Save changes</button>
     </div>
   </div>
 </div>
@@ -410,28 +429,18 @@ function initSupabaseClient() {
   if (!supabaseClient) supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
 }
 
-// ── Fields ───────────────────────────────────────────────────
-// FIELDS drives pill rendering, DB payload, summary grid, and edit modal.
-// Each entry's `group` maps to a `<div class="group-pills" id="group-{group}">` container in the Baby tab HTML.
-// Valid group values: 'type' | 'diaper' | 'exercises' | 'other'
-// Summary grid elements are expected as `id="sum-{key}"` (rendered by buildSummaryGrid on init).
-const FIELDS = [
-  { key: 'breast',  label: 'Breast',  dbKey: 'breast',  group: 'type',      color: '#f0a8d0' },
-  { key: 'formula', label: 'Formula', dbKey: 'formula', group: 'type',      color: '#a8d8f0' },
-  { key: 'wet',   label: 'Wet',    dbKey: 'wet',    group: 'diaper',    color: '#a8d8f0' },
-  { key: 'bm',    label: 'BM',     dbKey: 'bm',     group: 'diaper',    color: '#f0d0a8' },
-  { key: 'guppy', label: 'Guppy',  dbKey: 'guppy',  group: 'exercises', color: '#f0e8a8' },
-  { key: 'tmj',   label: 'TMJ',    dbKey: 'tmj',    group: 'exercises', color: '#d0a8f0' },
-  { key: 'tummy', label: 'Tummy',  dbKey: 'tummy',  group: 'exercises', color: '#f0a8d0' },
-  { key: 'pump',  label: 'Pumped', dbKey: 'pumped', group: 'other',     color: '#a8f0c6' },
-  { key: 'd3',    label: 'D3',     dbKey: 'd3',     group: 'other',     color: '#f0f0a8' },
-];
+// ── Baby tab v2 state ────────────────────────────────────────
+// Old mmx_baby table and its fields are left untouched — this tab now writes
+// to mmx_baby_log2 (feeding/pumped/tummy, midnight-to-midnight) and mmx_baby_d3
+// (one on/off flag per calendar day) instead.
+let babyLog2 = [];          // today's mmx_baby_log2 rows
+let d3Today = false;
+let feedType = 'breast';    // feeding modal slider state
+let editFeedType = 'breast'; // entry2 edit modal slider state
+let editingEntry2 = null;    // row currently open in entry2-edit-modal
 
 // ── State ─────────────────────────────────────────────────────
-const checks  = Object.fromEntries(FIELDS.map(f => [f.key, false]));
-const echecks = Object.fromEntries(FIELDS.map(f => [f.key, false]));
-let allEntries = [], allBP = [], editingId = null, chartBP = null;
-let noteSaveTimer = null, noteEditing = false;
+let allBP = [], chartBP = null;
 
 // ── Helpers ──────────────────────────────────────────────────
 const getEl = id => document.getElementById(id);
@@ -440,9 +449,6 @@ const pad   = n  => String(n).padStart(2, '0');
 function nowTs() {
   const d = new Date();
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-function rollingCutoff() {
-  return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0,19).replace('T',' ');
 }
 function sevenDayCutoff() {
   return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0,19).replace('T',' ');
@@ -457,53 +463,13 @@ function fmt12full(tsStr) {
   const h = parseInt(hh);
   return `${mo}/${dy} ${h%12||12}:${mm}${h>=12?'pm':'am'}`;
 }
-function timeSince(tsStr) {
-  const mins = Math.floor((Date.now() - new Date(tsStr.replace(' ','T')))/60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins/60), rem = mins%60;
-  return rem ? `${hrs}h ${rem}m ago` : `${hrs}h ago`;
-}
 function tsToLocal(ts) { return ts.slice(0,16).replace(' ','T'); }
 function localToTs(v)  { return v.replace('T',' ')+':00'; }
-function escHtml(s)    { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function vibrate()     { if (navigator.vibrate) navigator.vibrate(40); }
 
 function showToast(msg) {
   const t = getEl('toast'); t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2200);
-}
-
-// ── Build UI ─────────────────────────────────────────────────
-function buildCheckPills() {
-  ['type','diaper','exercises','other'].forEach(group => {
-    const el = getEl('group-'+group); if (!el) return;
-    el.innerHTML = FIELDS.filter(f => f.group===group).map(f => `
-      <div class="check-pill" id="pill-${f.key}" onclick="toggleCheck('${f.key}')">
-        <span class="check-icon" id="icon-${f.key}"></span>${f.label}
-      </div>`).join('');
-  });
-  getEl('edit-check-pills').innerHTML = FIELDS.map(f => `
-    <div class="check-pill" id="epill-${f.key}" onclick="toggleEditCheck('${f.key}')">
-      <span class="check-icon" id="eicon-${f.key}"></span>${f.label}
-    </div>`).join('');
-  getEl('summary-grid').innerHTML = FIELDS.map(f => `
-    <div class="summary-cell"><div class="num" id="sum-${f.key}">—</div><div class="lbl">${f.label}</div></div>`).join('');
-}
-
-function toggleCheck(key) {
-  checks[key] = !checks[key];
-  getEl('pill-'+key).classList.toggle('on', checks[key]);
-  getEl('icon-'+key).textContent = checks[key] ? '✓' : '';
-}
-function toggleEditCheck(key) {
-  echecks[key] = !echecks[key];
-  getEl('epill-'+key).classList.toggle('on', echecks[key]);
-  getEl('eicon-'+key).textContent = echecks[key] ? '✓' : '';
-}
-function resetForm() {
-  getEl('amt-input').value = ''; getEl('notes-input').value = '';
-  FIELDS.forEach(f => { checks[f.key]=false; getEl('pill-'+f.key).classList.remove('on'); getEl('icon-'+f.key).textContent=''; });
 }
 
 // ── Tab order & drag-reorder ──────────────────────────────────
@@ -673,6 +639,7 @@ function switchTab(name) {
   renderTabs();
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   getEl('panel-'+name).classList.add('active');
+  getEl('main-content').classList.toggle('wide-tab', name === 'tracker');
   if (LOAD_FNS[name]) LOAD_FNS[name]();
 }
 
@@ -696,175 +663,179 @@ async function storageFetch(path, options={}) {
   return res;
 }
 
-// ── Shared note ──────────────────────────────────────────────
-async function loadNote() {
-  try {
-    const rows = await sbFetch('mmx_note?order=id.desc&limit=1');
-    const display = getEl('note-display'), input = getEl('note-input');
-    if (rows && rows.length && rows[0].note?.trim()) {
-      display.textContent = rows[0].note; display.classList.remove('empty');
-      if (!noteEditing) input.value = rows[0].note;
-    } else {
-      display.textContent = 'No note yet'; display.classList.add('empty');
-      if (!noteEditing) input.value = '';
-    }
-  } catch (err) { console.error('loadNote failed:', err); }
+// ── Baby tab v2 (midnight-to-midnight) ─────────────────────────
+function todayDateStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function todayStartTs() { return todayDateStr() + ' 00:00:00'; }
+
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function formatDateHeader() {
+  const d = new Date();
+  const day = d.getDate();
+  const suffix = (day%10===1&&day!==11) ? 'st' : (day%10===2&&day!==12) ? 'nd' : (day%10===3&&day!==13) ? 'rd' : 'th';
+  return `${MONTH_NAMES[d.getMonth()]} ${day}${suffix}`;
 }
 
-function toggleNoteEdit() {
-  const display = getEl('note-display'), input = getEl('note-input'), btn = getEl('note-edit-btn');
-  noteEditing = !noteEditing;
-  if (noteEditing) {
-    display.style.display = 'none'; input.style.display = 'block';
-    input.value = display.classList.contains('empty') ? '' : display.textContent;
-    input.focus(); btn.textContent = 'Save'; btn.style.color = 'var(--accent)'; btn.style.borderColor = 'var(--accent-border)';
-    input.oninput = () => {
-      if (noteSaveTimer) clearTimeout(noteSaveTimer);
-      getEl('note-saving').textContent = '…';
-      noteSaveTimer = setTimeout(() => saveNote(input.value.trim()), 1500);
-    };
-  } else {
-    const text = input.value.trim();
-    display.style.display = 'block'; input.style.display = 'none';
-    if (text) { display.textContent = text; display.classList.remove('empty'); }
-    else       { display.textContent = 'No note yet'; display.classList.add('empty'); }
-    btn.textContent = 'Edit'; btn.style.color = ''; btn.style.borderColor = '';
-    saveNote(text);
+async function loadBabyLog2() {
+  try {
+    const since = todayStartTs();
+    const rows  = await sbFetch(`mmx_baby_log2?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=500`);
+    babyLog2 = rows || [];
+    renderFeedingLog();
+    renderQuickList('pumped');
+    renderQuickList('tummy');
+    renderBabyTotals();
+  } catch (err) {
+    console.error('loadBabyLog2 failed:', err);
+    getEl('feeding-log-body').innerHTML = '<div class="empty-state">Could not load</div>';
   }
 }
 
-async function saveNote(text) {
+async function loadD3() {
   try {
-    const rows = await sbFetch('mmx_note?order=id.desc&limit=1');
+    const date = todayDateStr();
+    const rows = await sbFetch(`mmx_baby_d3?date=eq.${date}&limit=1`);
+    d3Today = !!(rows && rows.length && rows[0].d3);
+    getEl('d3-btn').classList.toggle('on', d3Today);
+  } catch (err) { console.error('loadD3 failed:', err); }
+}
+
+async function toggleD3() {
+  const date = todayDateStr();
+  const newVal = !d3Today;
+  try {
+    const rows = await sbFetch(`mmx_baby_d3?date=eq.${date}&limit=1`);
     if (rows && rows.length) {
-      await sbFetch(`mmx_note?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({ note:text }) });
+      await sbFetch(`mmx_baby_d3?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({ d3:newVal }) });
     } else {
-      await sbFetch('mmx_note', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ note:text }) });
+      await sbFetch('mmx_baby_d3', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ date, d3:newVal }) });
     }
-    getEl('note-saving').textContent = '✓';
-    setTimeout(() => { getEl('note-saving').textContent = ''; }, 1500);
-  } catch (err) { getEl('note-saving').textContent = ''; }
+    d3Today = newVal;
+    getEl('d3-btn').classList.toggle('on', d3Today);
+    vibrate();
+  } catch (err) { showToast('Could not update D3'); }
 }
 
-// ── Baby log ─────────────────────────────────────────────────
-async function logEntry() {
-  const amtRaw = getEl('amt-input').value.trim();
-  const amtNum = parseFloat(amtRaw);
-  if (amtRaw && !isNaN(amtNum) && amtNum < 10) {
-    if (!confirm(`Amount entered is ${amtNum} mL — that seems very small. Are you sure?`)) return;
-  }
-  const btn = getEl('log-btn'); btn.disabled = true;
-  const payload = { ts:nowTs(), amount:amtRaw||null, notes:getEl('notes-input').value.trim()||null };
-  FIELDS.forEach(f => { payload[f.dbKey] = checks[f.key]; });
+// ── Feeding modal ──
+function openFeedingModal() {
+  getEl('feeding-amt').value = '';
+  feedType = 'breast';
+  getEl('feed-slider').classList.remove('formula');
+  getEl('feeding-modal').classList.add('open');
+}
+function closeFeedingModal() { getEl('feeding-modal').classList.remove('open'); }
+
+// Shared handler for both feeding-modal and entry2-edit-modal sliders — a
+// two-position segmented control (click either half) rather than a draggable
+// thumb, which is simpler and just as functional for a binary choice.
+function handleFeedSliderClick(e, which) {
+  const el = which === 'feed' ? getEl('feed-slider') : getEl('entry2-edit-slider');
+  const rect = el.getBoundingClientRect();
+  const clickedFormula = (e.clientX - rect.left) > rect.width / 2;
+  if (which === 'feed') { feedType = clickedFormula ? 'formula' : 'breast'; el.classList.toggle('formula', clickedFormula); }
+  else { editFeedType = clickedFormula ? 'formula' : 'breast'; el.classList.toggle('formula', clickedFormula); }
+}
+
+async function submitFeeding() {
+  const amt = parseFloat(getEl('feeding-amt').value);
+  if (isNaN(amt) || amt <= 0) { showToast('Enter a valid amount'); return; }
   try {
-    await sbFetch('mmx_baby?select=id', { method:'POST', prefer:'return=minimal', body:JSON.stringify(payload) });
-    vibrate(); resetForm(); await loadEntries(); showToast('Entry logged');
+    await sbFetch('mmx_baby_log2', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ts:nowTs(), kind:'feeding', amount:amt, feed_type:feedType }) });
+    vibrate(); closeFeedingModal(); await loadBabyLog2(); showToast('Feeding logged');
   } catch (err) { showToast('Error: '+err.message); }
-  finally { btn.disabled = false; }
 }
 
-async function loadEntries() {
+// ── Pumped / Tummy quick log ──
+async function logQuick(kind) {
   try {
-    const since = sevenDayCutoff();
-    const rows  = await sbFetch(`mmx_baby?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=500`);
-    allEntries  = rows || [];
-    renderList(allEntries); updateLastBar(allEntries); buildSummary();
-  } catch (err) { getEl('log-body').innerHTML='<div class="empty-state">Could not load</div>'; }
+    await sbFetch('mmx_baby_log2', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ts:nowTs(), kind }) });
+    vibrate(); await loadBabyLog2(); showToast(kind==='pumped' ? 'Pumped logged' : 'Tummy time logged');
+  } catch (err) { showToast('Error: '+err.message); }
 }
 
-function updateLastBar(rows) {
-  getEl('last-bar').style.display = rows.length ? 'flex' : 'none';
-  if (rows.length) getEl('since-text').textContent = timeSince(rows[0].ts);
-}
-
-function rollingWindowPlusOne(rows) {
-  // rows must be sorted ts.desc. Returns all in-window entries, then continues
-  // walking backward past the 24h cutoff — including every entry (regardless of
-  // Amount) — until it finds one that has a non-empty Amount. That entry is
-  // included and then the walk stops. All included entries are folded in uniformly.
-  const cutoff = rollingCutoff();
-  const inWindow = [];
-  let i = 0;
-  for (; i < rows.length && rows[i].ts >= cutoff; i++) inWindow.push(rows[i]);
-  for (; i < rows.length; i++) {
-    inWindow.push(rows[i]);
-    if (rows[i].amount && String(rows[i].amount).trim() !== '') break;
-  }
-  return inWindow;
-}
-
-function renderList(rows) {
-  const filtered = rollingWindowPlusOne(rows);
-  getEl('entry-count').textContent = filtered.length+(filtered.length===1?' entry':' entries');
-  if (!filtered.length) { getEl('log-body').innerHTML='<div class="empty-state">No entries in the past 24 hours</div>'; return; }
+function renderQuickList(kind) {
+  const box = getEl(kind+'-ts-box');
+  const entries = babyLog2.filter(r => r.kind===kind).slice().sort((a,b) => a.ts < b.ts ? 1 : -1);
+  if (!entries.length) { box.innerHTML = '<div class="empty-state" style="padding:0.25rem 0">—</div>'; return; }
   // NOTE: row.id is a DB-generated bigint — safe to interpolate directly into onclick.
-  // Do not interpolate free-text row values (notes, amount, etc.) into onclick attributes;
-  // use data-attributes + delegated listeners instead to avoid XSS.
-  getEl('log-body').innerHTML = filtered.map(row => {
-    const tags = FIELDS.filter(f => row[f.dbKey]).map(f => `<span class="check-tag">${f.label}</span>`).join('');
-    return `<div class="entry-row">
+  box.innerHTML = entries.map(r => `<div class="ts-entry" onclick="openEntry2Edit(${r.id})">${fmt12time(r.ts)}</div>`).join('');
+}
+
+function renderFeedingLog() {
+  const feedings = babyLog2.filter(r => r.kind==='feeding').slice().sort((a,b) => a.ts < b.ts ? 1 : -1);
+  if (!feedings.length) { getEl('feeding-log-body').innerHTML = '<div class="empty-state">No feedings yet today</div>'; return; }
+  getEl('feeding-log-body').innerHTML = feedings.map(row => `
+    <div class="entry-row">
       <div class="entry-line1">
         <span class="entry-time">${fmt12time(row.ts)}</span>
-        <span class="entry-notes">${row.notes ? escHtml(row.notes) : ''}</span>
+        <span class="entry-notes">${row.feed_type === 'formula' ? 'Formula' : 'Breast'}</span>
         <div class="entry-actions">
-          <button class="act-btn edit" onclick="openEdit(${row.id})">edit</button>
-          <button class="act-btn del"  onclick="deleteEntry(${row.id})">✕</button>
+          <button class="act-btn edit" onclick="openEntry2Edit(${row.id})">edit</button>
+          <button class="act-btn del"  onclick="deleteEntry2(${row.id})">✕</button>
         </div>
       </div>
       <div class="entry-line2">
-        ${row.amount ? `<span class="entry-amount">${escHtml(row.amount)}</span>` : ''}
-        <div class="entry-checks">${tags}</div>
+        ${row.amount ? `<span class="entry-amount">${row.amount} mL</span>` : ''}
       </div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 }
 
-async function deleteEntry(id) {
-  if (!confirm('Delete this entry?')) return;
-  try {
-    await sbFetch(`mmx_baby?id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' });
-    allEntries = allEntries.filter(r => r.id!==id);
-    renderList(allEntries); updateLastBar(allEntries); buildSummary(); showToast('Entry deleted');
-  } catch (err) { showToast('Delete failed'); }
+function renderBabyTotals() {
+  const feedings = babyLog2.filter(r => r.kind==='feeding');
+  const mlTotal      = feedings.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
+  const breastTotal  = feedings.filter(r => r.feed_type==='breast').reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
+  const formulaTotal = feedings.filter(r => r.feed_type==='formula').reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
+  getEl('baby-ml-total').textContent = mlTotal>0 ? Math.round(mlTotal)+' mL' : '—';
+  getEl('baby-breast-total').textContent  = Math.round(breastTotal)+' mL';
+  getEl('baby-formula-total').textContent = Math.round(formulaTotal)+' mL';
 }
 
-function openEdit(id) {
-  const row = allEntries.find(e => e.id===id); if (!row) return;
-  editingId = id;
-  getEl('edit-ts').value    = tsToLocal(row.ts);
-  getEl('edit-amt').value   = row.amount||'';
-  getEl('edit-notes').value = row.notes||'';
-  FIELDS.forEach(f => { echecks[f.key]=!!row[f.dbKey]; getEl('epill-'+f.key).classList.toggle('on',echecks[f.key]); getEl('eicon-'+f.key).textContent=echecks[f.key]?'✓':''; });
-  getEl('edit-modal').classList.add('open');
+// ── Edit / delete (Feeding, Pumped, Tummy share one modal) ──
+function openEntry2Edit(id) {
+  const row = babyLog2.find(r => r.id===id); if (!row) return;
+  editingEntry2 = row;
+  getEl('entry2-edit-ts').value = tsToLocal(row.ts);
+  const isFeeding = row.kind === 'feeding';
+  getEl('entry2-edit-amt-wrap').style.display  = isFeeding ? 'block' : 'none';
+  getEl('entry2-edit-type-wrap').style.display = isFeeding ? 'block' : 'none';
+  if (isFeeding) {
+    getEl('entry2-edit-amt').value = row.amount || '';
+    editFeedType = row.feed_type === 'formula' ? 'formula' : 'breast';
+    getEl('entry2-edit-slider').classList.toggle('formula', editFeedType==='formula');
+  }
+  getEl('entry2-edit-modal').classList.add('open');
 }
-function closeEdit() { getEl('edit-modal').classList.remove('open'); editingId=null; }
-async function saveEdit() {
-  if (!editingId) return;
-  const payload = { ts:localToTs(getEl('edit-ts').value), amount:getEl('edit-amt').value.trim()||null, notes:getEl('edit-notes').value.trim()||null };
-  FIELDS.forEach(f => { payload[f.dbKey]=echecks[f.key]; });
+function closeEntry2Edit() { getEl('entry2-edit-modal').classList.remove('open'); editingEntry2 = null; }
+
+async function saveEntry2Edit() {
+  if (!editingEntry2) return;
+  const payload = { ts: localToTs(getEl('entry2-edit-ts').value) };
+  if (editingEntry2.kind === 'feeding') {
+    const amt = parseFloat(getEl('entry2-edit-amt').value);
+    payload.amount = isNaN(amt) ? null : amt;
+    payload.feed_type = editFeedType;
+  }
   try {
-    await sbFetch(`mmx_baby?id=eq.${editingId}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify(payload) });
-    closeEdit(); await loadEntries(); showToast('Entry updated');
+    await sbFetch(`mmx_baby_log2?id=eq.${editingEntry2.id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify(payload) });
+    closeEntry2Edit(); await loadBabyLog2(); showToast('Entry updated');
   } catch (err) { showToast('Update failed: '+err.message); }
 }
 
-function buildSummary() {
-  const recent = rollingWindowPlusOne(allEntries);
-  const mlTotal = recent.reduce((sum,r) => { const n=parseFloat(r.amount); return sum+(isNaN(n)?0:n); }, 0);
-  getEl('ml-total').textContent = mlTotal>0 ? Math.round(mlTotal)+' mL' : '—';
-  FIELDS.filter(f => f.key!=='breast' && f.key!=='formula').forEach(f => { getEl('sum-'+f.key).textContent = recent.filter(r => r[f.dbKey]).length; });
-  // Breast/Formula: sum mL rather than count entries. Only attribute an entry's
-  // amount to one of the two when exactly one of them is checked — if both or
-  // neither are checked, the split is ambiguous and the entry is excluded from both.
-  let breastMl = 0, formulaMl = 0;
-  recent.forEach(r => {
-    const isBreast = !!r.breast, isFormula = !!r.formula;
-    if (isBreast === isFormula) return; // both or neither — skip
-    const n = parseFloat(r.amount); if (isNaN(n)) return;
-    if (isBreast) breastMl += n; else formulaMl += n;
-  });
-  getEl('sum-breast').textContent  = breastMl>0  ? Math.round(breastMl)+' mL'  : '0 mL';
-  getEl('sum-formula').textContent = formulaMl>0 ? Math.round(formulaMl)+' mL' : '0 mL';
+async function deleteEntry2(id) {
+  if (!confirm('Delete this entry?')) return;
+  try {
+    await sbFetch(`mmx_baby_log2?id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' });
+    await loadBabyLog2(); showToast('Entry deleted');
+  } catch (err) { showToast('Delete failed'); }
+}
+
+function deleteEntry2FromModal() {
+  if (!editingEntry2) return;
+  const id = editingEntry2.id;
+  closeEntry2Edit();
+  deleteEntry2(id);
 }
 
 // ── BP ────────────────────────────────────────────────────────
@@ -1135,10 +1106,10 @@ async function checkForUpdate() {
 
 // ── CSV Exports ───────────────────────────────────────────────
 async function exportBabyCSV() {
-  const rows = await sbFetch('mmx_baby?order=ts.desc&limit=5000');
+  const rows = await sbFetch('mmx_baby_log2?order=ts.desc&limit=5000');
   if (!rows||!rows.length) { showToast('No entries'); return; }
-  const lines = [['Timestamp','Amount','Notes',...FIELDS.map(f=>f.label)],
-    ...rows.map(r=>[r.ts,r.amount||'',r.notes||'',...FIELDS.map(f=>r[f.dbKey]?'Yes':'No')])];
+  const lines = [['Timestamp','Kind','Amount (mL)','Type'],
+    ...rows.map(r=>[r.ts, r.kind, r.amount||'', r.feed_type||''])];
   downloadCSV(lines, 'baby_log_'+new Date().toISOString().slice(0,10)+'.csv');
 }
 async function exportBPCSV() {
@@ -1192,10 +1163,10 @@ function updateAgeDisplay() {
 // ── Init ─────────────────────────────────────────────────────
 function init() {
   renderTabs();
-  buildCheckPills();
   initSupabaseClient();
-  loadNote();
-  loadEntries();
+  getEl('baby-date-header').textContent = formatDateHeader();
+  loadBabyLog2();
+  loadD3();
   updateAgeDisplay();
   // Return to saved tab after update reload
   const returnTab = localStorage.getItem('mmx_return_tab');
@@ -1205,9 +1176,8 @@ function init() {
   }
 }
 
-setInterval(() => { if (allEntries.length) updateLastBar(allEntries); }, 60000);
-setInterval(loadEntries, 30000);
-setInterval(loadNote, 30000);
+setInterval(loadBabyLog2, 30000);
+setInterval(loadD3, 30000);
 init();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
