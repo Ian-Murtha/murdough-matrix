@@ -191,6 +191,11 @@
 
     /* Settings */
     .status-row { display: flex; align-items: center; justify-content: space-between; }
+    .tab-visibility-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .tab-visibility-row:last-child { border-bottom: none; }
+    .tab-visibility-row label { flex: 1; font-family: var(--mono); font-size: 13px; color: var(--text); cursor: pointer; }
+    .tab-visibility-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+    .tab-visibility-row.locked label { color: var(--muted); }
     .version-display { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: center; padding: 0.5rem 0; }
 
     /* Modal */
@@ -351,9 +356,13 @@
 
   <!-- ══ SETTINGS TAB ══ -->
   <div class="panel" id="panel-settings">
+    <div class="card">
+      <p class="section-label">Visible tabs</p>
+      <div id="tab-visibility-list"></div>
+    </div>
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.0.1</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.1</div>
     </div>
   </div>
 
@@ -382,7 +391,7 @@
 <div class="modal-backdrop" id="entry2-edit-modal">
   <div class="modal">
     <h3>Edit entry</h3>
-    <div class="modal-field"><label>Timestamp</label><input type="datetime-local" id="entry2-edit-ts"></div>
+    <div class="modal-field"><label>Time</label><input type="time" id="entry2-edit-time"></div>
     <div class="modal-field" id="entry2-edit-amt-wrap"><label>Amount (mL)</label><input type="number" id="entry2-edit-amt" placeholder="e.g. 60"></div>
     <div class="modal-field" id="entry2-edit-type-wrap">
       <label>Type</label>
@@ -463,8 +472,6 @@ function fmt12full(tsStr) {
   const h = parseInt(hh);
   return `${mo}/${dy} ${h%12||12}:${mm}${h>=12?'pm':'am'}`;
 }
-function tsToLocal(ts) { return ts.slice(0,16).replace(' ','T'); }
-function localToTs(v)  { return v.replace('T',' ')+':00'; }
 function vibrate()     { if (navigator.vibrate) navigator.vibrate(40); }
 
 function showToast(msg) {
@@ -474,8 +481,8 @@ function showToast(msg) {
 
 // ── Tab order & drag-reorder ──────────────────────────────────
 const DEFAULT_TAB_ORDER = ['baby','bp','media','commbadge','tracker','weather','settings'];
-const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', commbadge:'CommBadge', tracker:'Tracker', weather:'Weather', settings:'Settings' };
-const LOAD_FNS   = { weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => syncCommBadgeSettings() };
+const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', commbadge:'Video', tracker:'Tracker', weather:'Weather', settings:'Settings' };
+const LOAD_FNS   = { weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => syncCommBadgeSettings(), settings: () => renderTabVisibilityList() };
 
 let tabOrder = JSON.parse(localStorage.getItem('mmx_tab_order') || 'null') || [...DEFAULT_TAB_ORDER];
 // Reconcile with defaults: append any new tabs (e.g. added in a later build) that aren't
@@ -485,8 +492,12 @@ DEFAULT_TAB_ORDER.forEach(name => { if (!tabOrder.includes(name)) tabOrder.push(
 tabOrder = tabOrder.filter(name => DEFAULT_TAB_ORDER.includes(name));
 saveTabOrderIfChanged();
 
+// Hidden tabs — per-device, via checkboxes in Settings. 'settings' can never be hidden.
+let hiddenTabs = (JSON.parse(localStorage.getItem('mmx_hidden_tabs') || '[]')).filter(n => n !== 'settings');
+function saveHiddenTabs() { localStorage.setItem('mmx_hidden_tabs', JSON.stringify(hiddenTabs)); }
+
 let activeTab    = 'baby';
-let dragSrcIdx   = null;
+let dragSrcName  = null;
 
 function saveTabOrder() { localStorage.setItem('mmx_tab_order', JSON.stringify(tabOrder)); }
 function saveTabOrderIfChanged() { saveTabOrder(); }
@@ -504,12 +515,12 @@ function syncCommBadgeSettings() {
 function renderTabs() {
   const container = getEl('tabs-container');
   container.innerHTML = '';
-  tabOrder.forEach((name, idx) => {
+  const visible = tabOrder.filter(name => !hiddenTabs.includes(name));
+  visible.forEach((name) => {
     const btn = document.createElement('button');
     btn.className = 'tab' + (name === activeTab ? ' active' : '');
     btn.textContent = TAB_LABELS[name];
     btn.dataset.name = name;
-    btn.dataset.idx  = String(idx);
 
     // ── Desktop drag-and-drop ─────────────────────────────────
     let longPressTimer = null;
@@ -529,14 +540,14 @@ function renderTabs() {
     btn.addEventListener('mouseleave', cancelLongPress);
 
     btn.addEventListener('dragstart', e => {
-      dragSrcIdx = idx;
+      dragSrcName = name;
       e.dataTransfer.effectAllowed = 'move';
     });
     btn.addEventListener('dragend', () => {
       btn.draggable = false;
       btn.classList.remove('dragging');
       container.querySelectorAll('.tab').forEach(b => b.classList.remove('drag-over'));
-      dragSrcIdx = null;
+      dragSrcName = null;
     });
     btn.addEventListener('dragover', e => {
       e.preventDefault();
@@ -546,9 +557,12 @@ function renderTabs() {
     });
     btn.addEventListener('drop', e => {
       e.preventDefault();
-      if (dragSrcIdx === null || dragSrcIdx === idx) return;
-      const moved = tabOrder.splice(dragSrcIdx, 1)[0];
-      tabOrder.splice(idx, 0, moved);
+      if (!dragSrcName || dragSrcName === name) return;
+      const srcIdx = tabOrder.indexOf(dragSrcName);
+      if (srcIdx === -1) return;
+      tabOrder.splice(srcIdx, 1);
+      const destIdx = tabOrder.indexOf(name); // recompute after removal — safe since name still present
+      tabOrder.splice(destIdx, 0, dragSrcName);
       saveTabOrder();
       renderTabs();
     });
@@ -570,7 +584,7 @@ function renderTabs() {
 
         if (!touchDragging) {
           touchDragging = true;
-          dragSrcIdx = idx;
+          dragSrcName = name;
           btn.classList.add('dragging');
           if (navigator.vibrate) navigator.vibrate(40);
           // Create a floating clone to follow the finger
@@ -608,16 +622,18 @@ function renderTabs() {
           const t = ev.changedTouches[0];
           const el = document.elementFromPoint(t.clientX, t.clientY);
           const overBtn = el?.closest('.tab');
-          if (overBtn && overBtn !== btn) {
-            const destIdx = parseInt(overBtn.dataset.idx);
-            if (!isNaN(destIdx) && destIdx !== dragSrcIdx) {
-              const moved = tabOrder.splice(dragSrcIdx, 1)[0];
-              tabOrder.splice(destIdx, 0, moved);
+          if (overBtn && overBtn !== btn && dragSrcName) {
+            const destName = overBtn.dataset.name;
+            const srcIdx = tabOrder.indexOf(dragSrcName);
+            if (srcIdx !== -1 && destName) {
+              tabOrder.splice(srcIdx, 1);
+              const destIdx = tabOrder.indexOf(destName);
+              tabOrder.splice(destIdx, 0, dragSrcName);
               saveTabOrder();
               renderTabs();
             }
           }
-          dragSrcIdx = null;
+          dragSrcName = null;
         } else if (!moved) {
           switchTab(name);
         }
@@ -632,6 +648,30 @@ function renderTabs() {
 
     container.appendChild(btn);
   });
+}
+
+function renderTabVisibilityList() {
+  const el = getEl('tab-visibility-list');
+  el.innerHTML = tabOrder.map(name => {
+    const locked = name === 'settings';
+    const checked = locked || !hiddenTabs.includes(name);
+    return `<div class="tab-visibility-row${locked ? ' locked' : ''}">
+      <label for="tabvis-${name}">${TAB_LABELS[name]}</label>
+      <input type="checkbox" id="tabvis-${name}" ${checked ? 'checked' : ''} ${locked ? 'disabled' : ''} onchange="toggleTabHidden('${name}', !this.checked)">
+    </div>`;
+  }).join('');
+}
+
+function toggleTabHidden(name, hide) {
+  if (name === 'settings') return; // Settings can never be hidden
+  if (hide) { if (!hiddenTabs.includes(name)) hiddenTabs.push(name); }
+  else { hiddenTabs = hiddenTabs.filter(n => n !== name); }
+  saveHiddenTabs();
+  if (hide && activeTab === name) {
+    const firstVisible = tabOrder.find(n => !hiddenTabs.includes(n));
+    if (firstVisible) { switchTab(firstVisible); return; } // switchTab already re-renders
+  }
+  renderTabs();
 }
 
 function switchTab(name) {
@@ -796,7 +836,7 @@ function renderBabyTotals() {
 function openEntry2Edit(id) {
   const row = babyLog2.find(r => r.id===id); if (!row) return;
   editingEntry2 = row;
-  getEl('entry2-edit-ts').value = tsToLocal(row.ts);
+  getEl('entry2-edit-time').value = row.ts.slice(11,16); // 'YYYY-MM-DD HH:MM:SS' -> 'HH:MM'
   const isFeeding = row.kind === 'feeding';
   getEl('entry2-edit-amt-wrap').style.display  = isFeeding ? 'block' : 'none';
   getEl('entry2-edit-type-wrap').style.display = isFeeding ? 'block' : 'none';
@@ -811,7 +851,11 @@ function closeEntry2Edit() { getEl('entry2-edit-modal').classList.remove('open')
 
 async function saveEntry2Edit() {
   if (!editingEntry2) return;
-  const payload = { ts: localToTs(getEl('entry2-edit-ts').value) };
+  // Date is intentionally fixed to the entry's existing day — only the time can change,
+  // since entries are always scoped to the day they were logged in this midnight-to-midnight model.
+  const datePart = editingEntry2.ts.slice(0,10);
+  const timeVal  = getEl('entry2-edit-time').value; // 'HH:MM'
+  const payload  = { ts: `${datePart} ${timeVal}:00` };
   if (editingEntry2.kind === 'feeding') {
     const amt = parseFloat(getEl('entry2-edit-amt').value);
     payload.amount = isNaN(amt) ? null : amt;
@@ -1123,7 +1167,6 @@ function downloadCSV(lines, filename) {
 }
 
 const BIRTH_DATE = new Date('2026-05-20T00:00:00');
-const BABY_NAME = 'Isla';
 
 function computeAgeLabel() {
   const now = new Date();
@@ -1163,24 +1206,31 @@ function computeAgeLabel() {
 
 function updateBabyHeader() {
   const ageLabel = computeAgeLabel();
-  getEl('baby-date-header').textContent = ageLabel
-    ? `${formatDateHeader()}, ${BABY_NAME} is ${ageLabel} old!`
-    : formatDateHeader();
+  const header = getEl('baby-date-header');
+  if (ageLabel) {
+    header.innerHTML = `${formatDateHeader()}<br>Isla is<br>${ageLabel} old!`;
+  } else {
+    header.textContent = formatDateHeader();
+  }
 }
 
 // ── Init ─────────────────────────────────────────────────────
 function init() {
-  renderTabs();
   initSupabaseClient();
   updateBabyHeader();
   loadBabyLog2();
   loadD3();
-  // Return to saved tab after update reload
+
+  // Resolve which tab to land on: saved return-tab (after an update reload) takes
+  // priority, otherwise the default 'baby' tab — falling back to the first visible
+  // tab if the resolved choice has been hidden.
   const returnTab = localStorage.getItem('mmx_return_tab');
-  if (returnTab) {
-    localStorage.removeItem('mmx_return_tab');
-    switchTab(returnTab);
+  if (returnTab) localStorage.removeItem('mmx_return_tab');
+  let target = returnTab || 'baby';
+  if (hiddenTabs.includes(target)) {
+    target = tabOrder.find(n => !hiddenTabs.includes(n)) || target;
   }
+  switchTab(target);
 }
 
 setInterval(loadBabyLog2, 30000);
