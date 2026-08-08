@@ -55,7 +55,7 @@
     .section-label { font-size: 11px; font-family: var(--mono); color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.6rem; }
 
     /* Last entry bar */
-    .baby-date-header { font-size: 17px; font-weight: 600; text-align: center; color: var(--text); font-family: var(--mono); letter-spacing: 0.02em; }
+    .baby-date-header { font-size: 15px; font-weight: 600; text-align: center; color: var(--text); font-family: var(--mono); letter-spacing: 0.02em; line-height: 1.5; }
     .baby-btn-row { display: flex; gap: 8px; margin-bottom: 0.6rem; }
     .baby-btn-row:last-child { margin-bottom: 0; }
     .baby-action-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
@@ -268,10 +268,6 @@
       <div class="entry-list" id="feeding-log-body"><div class="empty-state">No feedings yet today</div></div>
     </div>
 
-    <div class="card" style="text-align:center">
-      <div id="age-display" class="version-display" style="font-size:13px;color:var(--text)"></div>
-    </div>
-
     <div class="card">
       <button class="export-btn" onclick="exportBabyCSV()">&#8659; Download baby log CSV</button>
     </div>
@@ -357,7 +353,7 @@
   <div class="panel" id="panel-settings">
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.0</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.0.1</div>
     </div>
   </div>
 
@@ -451,7 +447,11 @@ function nowTs() {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 function sevenDayCutoff() {
-  return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0,19).replace('T',' ');
+  // Build using local time components (matching nowTs()'s format) rather than
+  // toISOString() (UTC) — ts values are stored in local time, so the cutoff
+  // must be too, or the comparison is off by the timezone offset at the boundary.
+  const d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 function fmt12time(tsStr) {
   const [hh, mm] = tsStr.split(' ')[1].split(':');
@@ -1123,11 +1123,12 @@ function downloadCSV(lines, filename) {
 }
 
 const BIRTH_DATE = new Date('2026-05-20T00:00:00');
+const BABY_NAME = 'Isla';
 
-function updateAgeDisplay() {
+function computeAgeLabel() {
   const now = new Date();
   const totalDays = Math.floor((now - BIRTH_DATE) / (1000 * 60 * 60 * 24));
-  if (totalDays < 0) { getEl('age-display').textContent = ''; return; }
+  if (totalDays < 0) return '';
 
   let label;
   if (totalDays < 30) {
@@ -1157,17 +1158,23 @@ function updateAgeDisplay() {
         : `${years} year${years!==1?'s':''}`;
     }
   }
-  getEl('age-display').textContent = label;
+  return label;
+}
+
+function updateBabyHeader() {
+  const ageLabel = computeAgeLabel();
+  getEl('baby-date-header').textContent = ageLabel
+    ? `${formatDateHeader()}, ${BABY_NAME} is ${ageLabel} old!`
+    : formatDateHeader();
 }
 
 // ── Init ─────────────────────────────────────────────────────
 function init() {
   renderTabs();
   initSupabaseClient();
-  getEl('baby-date-header').textContent = formatDateHeader();
+  updateBabyHeader();
   loadBabyLog2();
   loadD3();
-  updateAgeDisplay();
   // Return to saved tab after update reload
   const returnTab = localStorage.getItem('mmx_return_tab');
   if (returnTab) {
