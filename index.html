@@ -111,9 +111,17 @@
     .act-btn.del:hover  { color: var(--danger); border-color: var(--danger-border); }
 
     /* 24H totals */
-    .ml-total-card { background: var(--surface2); border: 1px solid var(--accent-border); border-radius: var(--r-sm); padding: 0.875rem; text-align: center; margin-bottom: 0.75rem; }
+    .ml-total-card { position: relative; overflow: hidden; background: var(--surface2); border: 1px solid var(--accent-border); border-radius: var(--r-sm); padding: 0.875rem; text-align: center; margin-bottom: 0.75rem; }
+    .ml-total-card .ml-fill { position: absolute; inset: 0; width: 0%; background: var(--accent-dim); transition: width 0.4s ease; z-index: 0; }
+    .ml-total-card .ml-num, .ml-total-card .ml-lbl { position: relative; z-index: 1; }
     .ml-total-card .ml-num { font-family: var(--mono); font-size: 28px; font-weight: 500; color: var(--accent); }
     .ml-total-card .ml-lbl { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+    .review-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-family: var(--mono); font-size: 11px; }
+    .review-table th { text-align: left; color: var(--muted); font-weight: 500; padding: 4px 6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .review-table td { padding: 5px 6px; border-bottom: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+    .review-table tr:last-child td { border-bottom: none; }
+    .review-table .d3-yes { color: var(--accent); }
+    .review-table .d3-no  { color: var(--muted); }
     .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .summary-cell { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 4px; text-align: center; }
     .summary-cell .num { font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--accent); }
@@ -258,7 +266,7 @@
 
     <div class="card">
       <p class="section-label">Today's totals</p>
-      <div class="ml-total-card"><div class="ml-num" id="baby-ml-total">—</div><div class="ml-lbl">mL fed</div></div>
+      <div class="ml-total-card"><div class="ml-fill" id="baby-ml-fill"></div><div class="ml-num" id="baby-ml-total">—</div><div class="ml-lbl">mL fed</div></div>
       <div class="summary-grid" style="grid-template-columns:repeat(2,1fr)">
         <div class="summary-cell"><div class="num" id="baby-breast-total">0 mL</div><div class="lbl">Breast</div></div>
         <div class="summary-cell"><div class="num" id="baby-formula-total">0 mL</div><div class="lbl">Formula</div></div>
@@ -274,6 +282,13 @@
     </div>
 
     <div class="card">
+      <button class="export-btn" onclick="toggleReviewPanel()">&#128197; View past 7 days</button>
+      <div id="review-panel" style="display:none">
+        <table class="review-table">
+          <thead><tr><th>Date</th><th>Feeding mL</th><th>D3</th><th>Pumped</th><th>Tummy</th></tr></thead>
+          <tbody id="review-table-body"></tbody>
+        </table>
+      </div>
       <button class="export-btn" onclick="exportBabyCSV()">&#8659; Download baby log CSV</button>
     </div>
   </div>
@@ -357,12 +372,19 @@
   <!-- ══ SETTINGS TAB ══ -->
   <div class="panel" id="panel-settings">
     <div class="card">
+      <p class="section-label">Daily feeding goal (mL)</p>
+      <div class="status-row" style="gap:8px">
+        <input type="number" id="ml-goal-input" placeholder="720" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--mono);font-size:14px;padding:9px 10px">
+        <button class="update-btn" style="width:auto;padding:9px 16px" onclick="saveMlGoal()">Save</button>
+      </div>
+    </div>
+    <div class="card">
       <p class="section-label">Visible tabs</p>
       <div id="tab-visibility-list"></div>
     </div>
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.1</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.2</div>
     </div>
   </div>
 
@@ -443,6 +465,7 @@ let d3Today = false;
 let feedType = 'breast';    // feeding modal slider state
 let editFeedType = 'breast'; // entry2 edit modal slider state
 let editingEntry2 = null;    // row currently open in entry2-edit-modal
+let mlGoal = 720;            // shared daily feeding goal, loaded from mmx_baby_goal
 
 // ── State ─────────────────────────────────────────────────────
 let allBP = [], chartBP = null;
@@ -482,7 +505,7 @@ function showToast(msg) {
 // ── Tab order & drag-reorder ──────────────────────────────────
 const DEFAULT_TAB_ORDER = ['baby','bp','media','commbadge','tracker','weather','settings'];
 const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', commbadge:'Video', tracker:'Tracker', weather:'Weather', settings:'Settings' };
-const LOAD_FNS   = { weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => syncCommBadgeSettings(), settings: () => renderTabVisibilityList() };
+const LOAD_FNS   = { weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => syncCommBadgeSettings(), settings: () => { renderTabVisibilityList(); getEl('ml-goal-input').value = mlGoal; } };
 
 let tabOrder = JSON.parse(localStorage.getItem('mmx_tab_order') || 'null') || [...DEFAULT_TAB_ORDER];
 // Reconcile with defaults: append any new tabs (e.g. added in a later build) that aren't
@@ -745,6 +768,8 @@ async function loadD3() {
 async function toggleD3() {
   const date = todayDateStr();
   const newVal = !d3Today;
+  const msg = newVal ? 'Mark D3 as given today?' : 'Unmark D3 for today?';
+  if (!confirm(msg)) return;
   try {
     const rows = await sbFetch(`mmx_baby_d3?date=eq.${date}&limit=1`);
     if (rows && rows.length) {
@@ -827,9 +852,35 @@ function renderBabyTotals() {
   const mlTotal      = feedings.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
   const breastTotal  = feedings.filter(r => r.feed_type==='breast').reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
   const formulaTotal = feedings.filter(r => r.feed_type==='formula').reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
-  getEl('baby-ml-total').textContent = mlTotal>0 ? Math.round(mlTotal)+' mL' : '—';
+  getEl('baby-ml-total').textContent = `${Math.round(mlTotal)} / ${mlGoal}ml`;
   getEl('baby-breast-total').textContent  = Math.round(breastTotal)+' mL';
   getEl('baby-formula-total').textContent = Math.round(formulaTotal)+' mL';
+  const pct = mlGoal > 0 ? Math.min(100, (mlTotal / mlGoal) * 100) : 0;
+  getEl('baby-ml-fill').style.width = pct + '%';
+}
+
+async function loadMlGoal() {
+  try {
+    const rows = await sbFetch('mmx_baby_goal?order=id.asc&limit=1');
+    if (rows && rows.length && rows[0].ml_goal) mlGoal = rows[0].ml_goal;
+  } catch (err) { console.error('loadMlGoal failed:', err); }
+  renderBabyTotals();
+}
+
+async function saveMlGoal() {
+  const val = parseInt(getEl('ml-goal-input').value);
+  if (isNaN(val) || val <= 0) { showToast('Enter a valid goal'); return; }
+  try {
+    const rows = await sbFetch('mmx_baby_goal?order=id.asc&limit=1');
+    if (rows && rows.length) {
+      await sbFetch(`mmx_baby_goal?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({ ml_goal:val }) });
+    } else {
+      await sbFetch('mmx_baby_goal', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ml_goal:val }) });
+    }
+    mlGoal = val;
+    renderBabyTotals();
+    showToast('Goal saved');
+  } catch (err) { showToast('Could not save goal'); }
 }
 
 // ── Edit / delete (Feeding, Pumped, Tummy share one modal) ──
@@ -1156,6 +1207,72 @@ async function exportBabyCSV() {
     ...rows.map(r=>[r.ts, r.kind, r.amount||'', r.feed_type||''])];
   downloadCSV(lines, 'baby_log_'+new Date().toISOString().slice(0,10)+'.csv');
 }
+
+// ── Past 7 days review ──
+function toggleReviewPanel() {
+  const panel = getEl('review-panel');
+  const isOpen = panel.style.display !== 'none';
+  if (isOpen) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  loadReviewData();
+}
+
+function sevenDayStartTs() {
+  // Midnight, 6 days ago (local time) — combined with today gives exactly 7 calendar days.
+  const d = new Date();
+  d.setDate(d.getDate() - 6);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} 00:00:00`;
+}
+
+async function loadReviewData() {
+  const tbody = getEl('review-table-body');
+  tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">Loading…</td></tr>';
+  try {
+    const since = sevenDayStartTs();
+    const sinceDate = since.slice(0,10);
+    const [logRows, d3Rows] = await Promise.all([
+      sbFetch(`mmx_baby_log2?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=1000`),
+      sbFetch(`mmx_baby_d3?date=gte.${sinceDate}&order=date.desc`)
+    ]);
+
+    // Bucket log entries by date
+    const byDate = {};
+    (logRows||[]).forEach(r => {
+      const d = r.ts.slice(0,10);
+      if (!byDate[d]) byDate[d] = { ml:0, pumped:0, tummy:0 };
+      if (r.kind === 'feeding') byDate[d].ml += (parseFloat(r.amount)||0);
+      else if (r.kind === 'pumped') byDate[d].pumped++;
+      else if (r.kind === 'tummy') byDate[d].tummy++;
+    });
+    const d3ByDate = {};
+    (d3Rows||[]).forEach(r => { d3ByDate[r.date] = !!r.d3; });
+
+    // Build the 7 date strings, today first
+    const dates = [];
+    for (let i=0; i<7; i++) {
+      const d = new Date(); d.setDate(d.getDate()-i);
+      dates.push(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);
+    }
+
+    tbody.innerHTML = dates.map(dateStr => {
+      const day = byDate[dateStr] || { ml:0, pumped:0, tummy:0 };
+      const d3  = !!d3ByDate[dateStr];
+      const [y,m,dd] = dateStr.split('-');
+      const label = `${m}/${dd}`;
+      return `<tr>
+        <td>${label}</td>
+        <td>${Math.round(day.ml)}</td>
+        <td class="${d3?'d3-yes':'d3-no'}">${d3?'Yes':'No'}</td>
+        <td>${day.pumped}</td>
+        <td>${day.tummy}</td>
+      </tr>`;
+    }).join('');
+  } catch (err) {
+    console.error('loadReviewData failed:', err);
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">Could not load</td></tr>';
+  }
+}
+
 async function exportBPCSV() {
   const rows = await sbFetch('mmx_bp?order=ts.desc&limit=5000');
   if (!rows||!rows.length) { showToast('No BP entries'); return; }
@@ -1220,6 +1337,7 @@ function init() {
   updateBabyHeader();
   loadBabyLog2();
   loadD3();
+  loadMlGoal();
 
   // Resolve which tab to land on: saved return-tab (after an update reload) takes
   // priority, otherwise the default 'baby' tab — falling back to the first visible
