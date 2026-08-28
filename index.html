@@ -56,6 +56,16 @@
 
     /* Last entry bar */
     .baby-date-header { font-size: 15px; font-weight: 600; text-align: center; color: var(--text); font-family: var(--mono); letter-spacing: 0.02em; line-height: 1.5; }
+    .note-row { display: flex; align-items: center; gap: 8px; min-height: 32px; }
+    .note-text { flex: 1; font-size: 13px; color: var(--text); line-height: 1.4; word-break: break-word; }
+    .note-text.empty { color: var(--muted); font-style: italic; font-size: 12px; }
+    .note-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-family: var(--sans); font-size: 13px; line-height: 1.4; resize: none; min-height: 20px; max-height: 80px; padding: 0; }
+    .note-input::placeholder { color: var(--muted); font-style: italic; }
+    .note-edit-btn { flex-shrink: 0; background: transparent; border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--muted); font-family: var(--mono); font-size: 11px; padding: 4px 10px; cursor: pointer; transition: color 0.15s, border-color 0.15s; white-space: nowrap; }
+    .note-edit-btn:hover { color: var(--accent); border-color: var(--accent-border); }
+    .note-saving { font-family: var(--mono); font-size: 10px; color: var(--muted); flex-shrink: 0; }
+    .last-events-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+    .last-events-row strong { color: var(--text); font-weight: 500; }
     .baby-btn-row { display: flex; gap: 8px; margin-bottom: 0.6rem; }
     .baby-btn-row:last-child { margin-bottom: 0; }
     .baby-action-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
@@ -243,6 +253,19 @@
 
   <!-- ══ BABY TAB ══ -->
   <div class="panel active" id="panel-baby">
+    <div class="card">
+      <div class="note-row">
+        <div class="note-text empty" id="note-display">No note yet</div>
+        <textarea class="note-input" id="note-input" placeholder="Type a shared note…" rows="1" style="display:none"></textarea>
+        <span class="note-saving" id="note-saving"></span>
+        <button class="note-edit-btn" id="note-edit-btn" onclick="toggleNoteEdit()">Edit</button>
+      </div>
+      <div class="last-events-row">
+        <span>Last Pumped: <strong id="last-pumped-time">—</strong></span>
+        <span>Last Feeding: <strong id="last-feeding-time">—</strong></span>
+      </div>
+    </div>
+
     <div class="card" style="text-align:center">
       <div class="baby-date-header" id="baby-date-header">—</div>
     </div>
@@ -285,7 +308,7 @@
       <button class="export-btn" onclick="toggleReviewPanel()">&#128197; View past 7 days</button>
       <div id="review-panel" style="display:none">
         <table class="review-table">
-          <thead><tr><th>Date</th><th>Feeding mL</th><th>D3</th><th>Pumped</th><th>Tummy</th></tr></thead>
+          <thead><tr><th>Date</th><th>Breast</th><th>Formula</th><th>D3</th><th>Pumped</th><th>Tummy</th></tr></thead>
           <tbody id="review-table-body"></tbody>
         </table>
       </div>
@@ -384,7 +407,7 @@
     </div>
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.2</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.3</div>
     </div>
   </div>
 
@@ -466,6 +489,7 @@ let feedType = 'breast';    // feeding modal slider state
 let editFeedType = 'breast'; // entry2 edit modal slider state
 let editingEntry2 = null;    // row currently open in entry2-edit-modal
 let mlGoal = 720;            // shared daily feeding goal, loaded from mmx_baby_goal
+let noteSaveTimer = null, noteEditing = false;
 
 // ── State ─────────────────────────────────────────────────────
 let allBP = [], chartBP = null;
@@ -741,6 +765,79 @@ function formatDateHeader() {
   return `${MONTH_NAMES[d.getMonth()]} ${day}${suffix}`;
 }
 
+// ── Shared note ──────────────────────────────────────────────
+async function loadNote() {
+  try {
+    const rows = await sbFetch('mmx_note?order=id.desc&limit=1');
+    const display = getEl('note-display'), input = getEl('note-input');
+    if (rows && rows.length && rows[0].note?.trim()) {
+      display.textContent = rows[0].note; display.classList.remove('empty');
+      if (!noteEditing) input.value = rows[0].note;
+    } else {
+      display.textContent = 'No note yet'; display.classList.add('empty');
+      if (!noteEditing) input.value = '';
+    }
+  } catch (err) { console.error('loadNote failed:', err); }
+}
+
+function toggleNoteEdit() {
+  const display = getEl('note-display'), input = getEl('note-input'), btn = getEl('note-edit-btn');
+  noteEditing = !noteEditing;
+  if (noteEditing) {
+    display.style.display = 'none'; input.style.display = 'block';
+    input.value = display.classList.contains('empty') ? '' : display.textContent;
+    input.focus(); btn.textContent = 'Save'; btn.style.color = 'var(--accent)'; btn.style.borderColor = 'var(--accent-border)';
+    input.oninput = () => {
+      if (noteSaveTimer) clearTimeout(noteSaveTimer);
+      getEl('note-saving').textContent = '…';
+      noteSaveTimer = setTimeout(() => saveNote(input.value.trim()), 1500);
+    };
+  } else {
+    const text = input.value.trim();
+    display.style.display = 'block'; input.style.display = 'none';
+    if (text) { display.textContent = text; display.classList.remove('empty'); }
+    else       { display.textContent = 'No note yet'; display.classList.add('empty'); }
+    btn.textContent = 'Edit'; btn.style.color = ''; btn.style.borderColor = '';
+    saveNote(text);
+  }
+}
+
+async function saveNote(text) {
+  try {
+    const rows = await sbFetch('mmx_note?order=id.desc&limit=1');
+    if (rows && rows.length) {
+      await sbFetch(`mmx_note?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({ note:text }) });
+    } else {
+      await sbFetch('mmx_note', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ note:text }) });
+    }
+    getEl('note-saving').textContent = '✓';
+    setTimeout(() => { getEl('note-saving').textContent = ''; }, 1500);
+  } catch (err) { getEl('note-saving').textContent = ''; }
+}
+
+// ── Last Pumped / Last Feeding (not reset at midnight) ──
+function formatLastEventTime(tsStr) {
+  const datePart = tsStr.slice(0,10);
+  const timeLabel = fmt12time(tsStr);
+  if (datePart === todayDateStr()) return timeLabel;
+  const y = new Date(); y.setDate(y.getDate()-1);
+  const yestStr = `${y.getFullYear()}-${pad(y.getMonth()+1)}-${pad(y.getDate())}`;
+  if (datePart === yestStr) return `Yesterday ${timeLabel}`;
+  const [,m,d] = datePart.split('-');
+  return `${parseInt(m)}/${parseInt(d)} ${timeLabel}`;
+}
+
+async function loadLastEvents() {
+  try {
+    const [feedRows, pumpRows] = await Promise.all([
+      sbFetch('mmx_baby_log2?kind=eq.feeding&order=ts.desc&limit=1'),
+      sbFetch('mmx_baby_log2?kind=eq.pumped&order=ts.desc&limit=1')
+    ]);
+    getEl('last-feeding-time').textContent = (feedRows && feedRows.length) ? formatLastEventTime(feedRows[0].ts) : '—';
+    getEl('last-pumped-time').textContent  = (pumpRows && pumpRows.length) ? formatLastEventTime(pumpRows[0].ts) : '—';
+  } catch (err) { console.error('loadLastEvents failed:', err); }
+}
+
 async function loadBabyLog2() {
   try {
     const since = todayStartTs();
@@ -750,6 +847,7 @@ async function loadBabyLog2() {
     renderQuickList('pumped');
     renderQuickList('tummy');
     renderBabyTotals();
+    loadLastEvents(); // fire-and-forget — not scoped to today, doesn't block the main render
   } catch (err) {
     console.error('loadBabyLog2 failed:', err);
     getEl('feeding-log-body').innerHTML = '<div class="empty-state">Could not load</div>';
@@ -1226,7 +1324,7 @@ function sevenDayStartTs() {
 
 async function loadReviewData() {
   const tbody = getEl('review-table-body');
-  tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">Loading…</td></tr>';
   try {
     const since = sevenDayStartTs();
     const sinceDate = since.slice(0,10);
@@ -1239,8 +1337,12 @@ async function loadReviewData() {
     const byDate = {};
     (logRows||[]).forEach(r => {
       const d = r.ts.slice(0,10);
-      if (!byDate[d]) byDate[d] = { ml:0, pumped:0, tummy:0 };
-      if (r.kind === 'feeding') byDate[d].ml += (parseFloat(r.amount)||0);
+      if (!byDate[d]) byDate[d] = { breast:0, formula:0, pumped:0, tummy:0 };
+      if (r.kind === 'feeding') {
+        const amt = parseFloat(r.amount) || 0;
+        if (r.feed_type === 'formula') byDate[d].formula += amt;
+        else byDate[d].breast += amt; // defaults to breast, matching the app-wide Breast/Formula convention
+      }
       else if (r.kind === 'pumped') byDate[d].pumped++;
       else if (r.kind === 'tummy') byDate[d].tummy++;
     });
@@ -1255,13 +1357,14 @@ async function loadReviewData() {
     }
 
     tbody.innerHTML = dates.map(dateStr => {
-      const day = byDate[dateStr] || { ml:0, pumped:0, tummy:0 };
+      const day = byDate[dateStr] || { breast:0, formula:0, pumped:0, tummy:0 };
       const d3  = !!d3ByDate[dateStr];
       const [y,m,dd] = dateStr.split('-');
       const label = `${m}/${dd}`;
       return `<tr>
         <td>${label}</td>
-        <td>${Math.round(day.ml)}</td>
+        <td>${Math.round(day.breast)}</td>
+        <td>${Math.round(day.formula)}</td>
         <td class="${d3?'d3-yes':'d3-no'}">${d3?'Yes':'No'}</td>
         <td>${day.pumped}</td>
         <td>${day.tummy}</td>
@@ -1269,7 +1372,7 @@ async function loadReviewData() {
     }).join('');
   } catch (err) {
     console.error('loadReviewData failed:', err);
-    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">Could not load</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">Could not load</td></tr>';
   }
 }
 
@@ -1335,6 +1438,7 @@ function updateBabyHeader() {
 function init() {
   initSupabaseClient();
   updateBabyHeader();
+  loadNote();
   loadBabyLog2();
   loadD3();
   loadMlGoal();
@@ -1353,6 +1457,7 @@ function init() {
 
 setInterval(loadBabyLog2, 30000);
 setInterval(loadD3, 30000);
+setInterval(loadNote, 30000);
 init();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
