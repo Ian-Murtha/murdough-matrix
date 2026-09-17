@@ -392,22 +392,49 @@
     </iframe>
   </div>
 
+  <!-- ══ BUDGET TAB ══ -->
+  <div class="panel" id="panel-budget" style="padding:0">
+    <iframe id="budget-frame"
+      src="https://docs.google.com/spreadsheets/d/17sgZExlj1oS7cEhEncmK5Y5Fx5hj-dpI2mrWQswwgAY/edit"
+      style="width:100%;height:calc(100dvh - 140px);border:0;border-radius:var(--r-sm);background:var(--surface)">
+    </iframe>
+  </div>
+
   <!-- ══ SETTINGS TAB ══ -->
   <div class="panel" id="panel-settings">
-    <div class="card">
-      <p class="section-label">Daily feeding goal (mL)</p>
-      <div class="status-row" style="gap:8px">
-        <input type="number" id="ml-goal-input" placeholder="720" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--mono);font-size:14px;padding:9px 10px">
-        <button class="update-btn" style="width:auto;padding:9px 16px" onclick="saveMlGoal()">Save</button>
+    <!-- Login form — shown only when logged out -->
+    <div class="card" id="settings-login-card" style="display:none">
+      <p class="section-label">Log in</p>
+      <div class="modal-field"><label>Email</label><input type="email" id="login-email" autocomplete="username"></div>
+      <div class="modal-field"><label>Password</label><input type="password" id="login-password" autocomplete="current-password"></div>
+      <div id="login-error" style="color:var(--danger);font-family:var(--mono);font-size:12px;margin-bottom:0.5rem;display:none"></div>
+      <button class="update-btn" onclick="doLogin()">Log in</button>
+    </div>
+
+    <!-- Logged-in indicator + logout — shown only when logged in -->
+    <div class="card" id="settings-logged-in-card" style="display:none;text-align:center">
+      <div class="version-display" id="settings-logged-in-email" style="margin-bottom:0.6rem"></div>
+      <button class="update-btn" onclick="doLogout()">Log out</button>
+    </div>
+
+    <!-- Protected settings content — shown only when logged in -->
+    <div id="settings-protected-content" style="display:none">
+      <div class="card">
+        <p class="section-label">Daily feeding goal (mL)</p>
+        <div class="status-row" style="gap:8px">
+          <input type="number" id="ml-goal-input" placeholder="720" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--mono);font-size:14px;padding:9px 10px">
+          <button class="update-btn" style="width:auto;padding:9px 16px" onclick="saveMlGoal()">Save</button>
+        </div>
+      </div>
+      <div class="card">
+        <p class="section-label">Visible tabs</p>
+        <div id="tab-visibility-list"></div>
       </div>
     </div>
-    <div class="card">
-      <p class="section-label">Visible tabs</p>
-      <div id="tab-visibility-list"></div>
-    </div>
+
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.3</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.4</div>
     </div>
   </div>
 
@@ -479,6 +506,53 @@ function initSupabaseClient() {
   if (!supabaseClient) supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
 }
 
+// ── Auth ─────────────────────────────────────────────────────
+async function initAuth() {
+  initSupabaseClient();
+  const { data } = await supabaseClient.auth.getSession();
+  authSession = data?.session || null;
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    const wasLoggedIn = !!authSession;
+    authSession = session;
+    // If we just logged out while sitting on a now-inaccessible protected tab, jump away.
+    if (wasLoggedIn && !authSession && PROTECTED_TABS.includes(activeTab)) {
+      switchTab(tabOrder.find(n => !hiddenTabs.includes(n) && !PROTECTED_TABS.includes(n)) || 'baby');
+    } else {
+      renderTabs();
+    }
+    if (activeTab === 'settings') renderSettingsAuthState();
+  });
+  renderTabs();
+}
+
+async function doLogin() {
+  const email = getEl('login-email').value.trim();
+  const password = getEl('login-password').value;
+  const errEl = getEl('login-error');
+  errEl.style.display = 'none';
+  if (!email || !password) { errEl.textContent = 'Enter email and password.'; errEl.style.display = 'block'; return; }
+  try {
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+    getEl('login-password').value = '';
+    renderSettingsAuthState();
+    renderTabs();
+  } catch (err) { errEl.textContent = 'Login failed. Try again.'; errEl.style.display = 'block'; }
+}
+
+async function doLogout() {
+  try { await supabaseClient.auth.signOut(); } catch (err) {}
+  // onAuthStateChange handles the tab redirect + re-render.
+}
+
+function renderSettingsAuthState() {
+  const loggedIn = !!authSession;
+  getEl('settings-login-card').style.display      = loggedIn ? 'none'  : 'block';
+  getEl('settings-logged-in-card').style.display   = loggedIn ? 'block' : 'none';
+  getEl('settings-protected-content').style.display = loggedIn ? 'block' : 'none';
+  if (loggedIn) getEl('settings-logged-in-email').textContent = 'Logged in as ' + authSession.user.email;
+}
+
 // ── Baby tab v2 state ────────────────────────────────────────
 // Old mmx_baby table and its fields are left untouched — this tab now writes
 // to mmx_baby_log2 (feeding/pumped/tummy, midnight-to-midnight) and mmx_baby_d3
@@ -527,9 +601,13 @@ function showToast(msg) {
 }
 
 // ── Tab order & drag-reorder ──────────────────────────────────
-const DEFAULT_TAB_ORDER = ['baby','bp','media','commbadge','tracker','weather','settings'];
-const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', commbadge:'Video', tracker:'Tracker', weather:'Weather', settings:'Settings' };
-const LOAD_FNS   = { weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => syncCommBadgeSettings(), settings: () => { renderTabVisibilityList(); getEl('ml-goal-input').value = mlGoal; } };
+const DEFAULT_TAB_ORDER = ['baby','bp','media','commbadge','tracker','budget','weather','settings'];
+const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', commbadge:'Video', tracker:'Tracker', budget:'Budget', weather:'Weather', settings:'Settings' };
+const LOAD_FNS   = { weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => syncCommBadgeSettings(), settings: () => { renderSettingsAuthState(); renderTabVisibilityList(); getEl('ml-goal-input').value = mlGoal; } };
+
+// Tabs that require a logged-in Supabase Auth session. Everything else is public.
+const PROTECTED_TABS = ['bp', 'budget', 'tracker'];
+let authSession = null; // Supabase Auth session, or null when logged out
 
 let tabOrder = JSON.parse(localStorage.getItem('mmx_tab_order') || 'null') || [...DEFAULT_TAB_ORDER];
 // Reconcile with defaults: append any new tabs (e.g. added in a later build) that aren't
@@ -562,7 +640,7 @@ function syncCommBadgeSettings() {
 function renderTabs() {
   const container = getEl('tabs-container');
   container.innerHTML = '';
-  const visible = tabOrder.filter(name => !hiddenTabs.includes(name));
+  const visible = tabOrder.filter(name => !hiddenTabs.includes(name) && (!PROTECTED_TABS.includes(name) || authSession));
   visible.forEach((name) => {
     const btn = document.createElement('button');
     btn.className = 'tab' + (name === activeTab ? ' active' : '');
@@ -722,6 +800,9 @@ function toggleTabHidden(name, hide) {
 }
 
 function switchTab(name) {
+  if (PROTECTED_TABS.includes(name) && !authSession) {
+    name = tabOrder.find(n => !hiddenTabs.includes(n) && !PROTECTED_TABS.includes(n)) || 'baby';
+  }
   activeTab = name;
   renderTabs();
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -732,9 +813,14 @@ function switchTab(name) {
 
 // ── Supabase REST ────────────────────────────────────────────
 async function sbFetch(path, options={}) {
+  // apikey identifies the project and must always be the anon key. Authorization determines
+  // the request's role for RLS purposes: the user's own access token when logged in (so
+  // auth.role() = 'authenticated' and auth.uid() resolves), otherwise the anon key itself
+  // (role = 'anon', which is what public "Allow all" tables already expect).
+  const token = authSession?.access_token || SB_KEY;
   const res = await fetch(SB_URL+'/rest/v1/'+path, {
     ...options,
-    headers: { 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Content-Type':'application/json', 'Prefer':options.prefer||'', ...(options.headers||{}) }
+    headers: { 'apikey':SB_KEY, 'Authorization':'Bearer '+token, 'Content-Type':'application/json', 'Prefer':options.prefer||'', ...(options.headers||{}) }
   });
   if (!res.ok) throw new Error(await res.text());
   const text = await res.text(); return text ? JSON.parse(text) : null;
@@ -742,9 +828,10 @@ async function sbFetch(path, options={}) {
 
 // ── Supabase Storage fetch helper ────────────────────────────
 async function storageFetch(path, options={}) {
+  const token = authSession?.access_token || SB_KEY;
   const res = await fetch(SB_URL+'/storage/v1/'+path, {
     ...options,
-    headers: { 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, ...(options.headers||{}) }
+    headers: { 'apikey':SB_KEY, 'Authorization':'Bearer '+token, ...(options.headers||{}) }
   });
   if (!res.ok) throw new Error(await res.text());
   return res;
@@ -1435,8 +1522,8 @@ function updateBabyHeader() {
 }
 
 // ── Init ─────────────────────────────────────────────────────
-function init() {
-  initSupabaseClient();
+async function init() {
+  await initAuth();
   updateBabyHeader();
   loadNote();
   loadBabyLog2();
@@ -1445,12 +1532,12 @@ function init() {
 
   // Resolve which tab to land on: saved return-tab (after an update reload) takes
   // priority, otherwise the default 'baby' tab — falling back to the first visible
-  // tab if the resolved choice has been hidden.
+  // tab if the resolved choice has been hidden or is a protected tab we're not logged into.
   const returnTab = localStorage.getItem('mmx_return_tab');
   if (returnTab) localStorage.removeItem('mmx_return_tab');
   let target = returnTab || 'baby';
-  if (hiddenTabs.includes(target)) {
-    target = tabOrder.find(n => !hiddenTabs.includes(n)) || target;
+  if (hiddenTabs.includes(target) || (PROTECTED_TABS.includes(target) && !authSession)) {
+    target = tabOrder.find(n => !hiddenTabs.includes(n) && !PROTECTED_TABS.includes(n)) || target;
   }
   switchTab(target);
 }
