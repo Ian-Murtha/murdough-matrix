@@ -16,6 +16,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -312,7 +313,7 @@
           <tbody id="review-table-body"></tbody>
         </table>
       </div>
-      <button class="export-btn" onclick="exportBabyCSV()">&#8659; Download baby log CSV</button>
+      <button class="export-btn" onclick="exportBabyCSV()">&#8659; Download baby log (Excel)</button>
     </div>
   </div>
 
@@ -434,7 +435,7 @@
 
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.4</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.5</div>
     </div>
   </div>
 
@@ -1387,10 +1388,72 @@ async function checkForUpdate() {
 // ── CSV Exports ───────────────────────────────────────────────
 async function exportBabyCSV() {
   const rows = await sbFetch('mmx_baby_log2?order=ts.desc&limit=5000');
-  if (!rows||!rows.length) { showToast('No entries'); return; }
-  const lines = [['Timestamp','Kind','Amount (mL)','Type'],
-    ...rows.map(r=>[r.ts, r.kind, r.amount||'', r.feed_type||''])];
-  downloadCSV(lines, 'baby_log_'+new Date().toISOString().slice(0,10)+'.csv');
+  const feedings = (rows||[]).filter(r => r.kind === 'feeding');
+  if (!feedings.length) { showToast('No feeding entries'); return; }
+
+  // Group by date, then sort each day's entries chronologically (oldest first within a day),
+  // with the most recent day listed first — matching the reviewed mock's layout.
+  const byDate = {};
+  feedings.forEach(r => {
+    const d = r.ts.slice(0,10);
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(r);
+  });
+  const dates = Object.keys(byDate).sort().reverse();
+  dates.forEach(d => byDate[d].sort((a,b) => a.ts < b.ts ? -1 : 1));
+
+  const HEADER_FONT = { name:'Arial', bold:true, color:{ rgb:'FFFFFF' }, sz:11 };
+  const HEADER_FILL = { patternType:'solid', fgColor:{ rgb:'4A6FA5' } };
+  const HEADER_ALIGN = { horizontal:'center', vertical:'center' };
+  const BODY_FONT = { name:'Arial', sz:11 };
+  const THIN_BOTTOM_BORDER = { bottom:{ style:'thin', color:{ rgb:'D0D0D0' } } };
+  const TYPE_FILLS = {
+    Breast:  { patternType:'solid', fgColor:{ rgb:'D6E4F0' } },
+    Formula: { patternType:'solid', fgColor:{ rgb:'FDE9D9' } }
+  };
+  const headerCell = v => ({ v, t:'s', s:{ font:HEADER_FONT, fill:HEADER_FILL, alignment:HEADER_ALIGN } });
+  const bodyCell = (v, fill, align) => ({
+    v, t: typeof v === 'number' ? 'n' : 's',
+    s: { font:BODY_FONT, fill, border:THIN_BOTTOM_BORDER, alignment:{ horizontal: align||'left' } }
+  });
+
+  // ── Sheet 1: Feeding Log ──
+  const feedRows = [[headerCell('Date'), headerCell('Time'), headerCell('Amount (mL)'), headerCell('Type')]];
+  dates.forEach(d => {
+    byDate[d].forEach(r => {
+      const typeLabel = r.feed_type === 'formula' ? 'Formula' : 'Breast';
+      const fill = TYPE_FILLS[typeLabel];
+      feedRows.push([
+        bodyCell(d, fill, 'left'),
+        bodyCell(fmt12time(r.ts), fill, 'left'),
+        bodyCell(r.amount ? Math.round(parseFloat(r.amount)) : 0, fill, 'center'),
+        bodyCell(typeLabel, fill, 'center')
+      ]);
+    });
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(feedRows);
+  ws1['!cols'] = [{ wch:12 }, { wch:10 }, { wch:14 }, { wch:12 }];
+
+  // ── Sheet 2: Daily Summary ──
+  const summaryRows = [[headerCell('Day'), headerCell('Total Breast'), headerCell('Total Formula'), headerCell('Day Total')]];
+  dates.forEach(d => {
+    const breast  = byDate[d].filter(r => r.feed_type !== 'formula').reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
+    const formula = byDate[d].filter(r => r.feed_type === 'formula').reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
+    const total   = breast + formula;
+    summaryRows.push([
+      bodyCell(d, null, 'left'),
+      bodyCell(Math.round(breast), null, 'center'),
+      bodyCell(Math.round(formula), null, 'center'),
+      { v: Math.round(total), t:'n', s: { font:{ name:'Arial', sz:11, bold:true }, border:THIN_BOTTOM_BORDER, alignment:{ horizontal:'center' } } }
+    ]);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(summaryRows);
+  ws2['!cols'] = [{ wch:12 }, { wch:13 }, { wch:14 }, { wch:12 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, 'Feeding Log');
+  XLSX.utils.book_append_sheet(wb, ws2, 'Daily Summary');
+  XLSX.writeFile(wb, 'baby_log_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
 // ── Past 7 days review ──
