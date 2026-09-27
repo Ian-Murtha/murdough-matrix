@@ -133,6 +133,8 @@
     .review-table tr:last-child td { border-bottom: none; }
     .review-table .d3-yes { color: var(--accent); }
     .review-table .d3-no  { color: var(--muted); }
+    .review-table .diff-pos { color: #2e9e4f; }
+    .review-table .diff-neg { color: #d6473c; }
     .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .summary-cell { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 4px; text-align: center; }
     .summary-cell .num { font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--accent); }
@@ -309,7 +311,7 @@
       <button class="export-btn" onclick="toggleReviewPanel()">&#128197; View past 7 days</button>
       <div id="review-panel" style="display:none">
         <table class="review-table">
-          <thead><tr><th>Date</th><th>Breast</th><th>Formula</th><th>D3</th><th>Pumped</th><th>Tummy</th></tr></thead>
+          <thead><tr><th>Date</th><th>Breast</th><th>Formula</th><th>+/-</th><th>D3</th><th>Pumped</th><th>Tummy</th></tr></thead>
           <tbody id="review-table-body"></tbody>
         </table>
       </div>
@@ -435,7 +437,7 @@
 
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.5</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.6</div>
     </div>
   </div>
 
@@ -1045,12 +1047,31 @@ function renderBabyTotals() {
   getEl('baby-ml-fill').style.width = pct + '%';
 }
 
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+// Records the mL goal actually in effect for a given calendar day, so exports
+// can later show the true historical goal instead of whatever it is "now".
+async function logDailyGoal(dateStr, val) {
+  try {
+    const rows = await sbFetch(`mmx_baby_goal_log?date=eq.${dateStr}&limit=1`);
+    if (rows && rows.length) {
+      await sbFetch(`mmx_baby_goal_log?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({ ml_goal:val }) });
+    } else {
+      await sbFetch('mmx_baby_goal_log', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ date:dateStr, ml_goal:val }) });
+    }
+  } catch (err) { console.error('logDailyGoal failed:', err); }
+}
+
 async function loadMlGoal() {
   try {
     const rows = await sbFetch('mmx_baby_goal?order=id.asc&limit=1');
     if (rows && rows.length && rows[0].ml_goal) mlGoal = rows[0].ml_goal;
   } catch (err) { console.error('loadMlGoal failed:', err); }
   renderBabyTotals();
+  logDailyGoal(todayStr(), mlGoal);
 }
 
 async function saveMlGoal() {
@@ -1065,6 +1086,7 @@ async function saveMlGoal() {
     }
     mlGoal = val;
     renderBabyTotals();
+    logDailyGoal(todayStr(), mlGoal);
     showToast('Goal saved');
   } catch (err) { showToast('Could not save goal'); }
 }
@@ -1391,6 +1413,16 @@ async function exportBabyCSV() {
   const feedings = (rows||[]).filter(r => r.kind === 'feeding');
   if (!feedings.length) { showToast('No feeding entries'); return; }
 
+  // Look up the goal actually in effect for each day. Days with no logged
+  // value (i.e. before this feature existed) default to the original 720ml.
+  let goalByDate = {};
+  try {
+    const goalRows = await sbFetch('mmx_baby_goal_log?order=date.asc&limit=5000');
+    (goalRows||[]).forEach(r => { goalByDate[r.date] = r.ml_goal; });
+  } catch (err) { console.error('loading goal log failed:', err); }
+  const DEFAULT_GOAL = 720;
+  const goalForDate = d => (goalByDate[d] != null ? goalByDate[d] : DEFAULT_GOAL);
+
   // Group by date, then sort each day's entries chronologically (oldest first within a day),
   // with the most recent day listed first — matching the reviewed mock's layout.
   const byDate = {};
@@ -1435,7 +1467,7 @@ async function exportBabyCSV() {
   ws1['!cols'] = [{ wch:12 }, { wch:10 }, { wch:14 }, { wch:12 }];
 
   // ── Sheet 2: Daily Summary ──
-  const summaryRows = [[headerCell('Day'), headerCell('Total Breast'), headerCell('Total Formula'), headerCell('Day Total')]];
+  const summaryRows = [[headerCell('Day'), headerCell('Total Breast'), headerCell('Total Formula'), headerCell('Day Total'), headerCell('Daily Goal (mL)')]];
   dates.forEach(d => {
     const breast  = byDate[d].filter(r => r.feed_type !== 'formula').reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
     const formula = byDate[d].filter(r => r.feed_type === 'formula').reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
@@ -1444,11 +1476,12 @@ async function exportBabyCSV() {
       bodyCell(d, null, 'left'),
       bodyCell(Math.round(breast), null, 'center'),
       bodyCell(Math.round(formula), null, 'center'),
-      { v: Math.round(total), t:'n', s: { font:{ name:'Arial', sz:11, bold:true }, border:THIN_BOTTOM_BORDER, alignment:{ horizontal:'center' } } }
+      { v: Math.round(total), t:'n', s: { font:{ name:'Arial', sz:11, bold:true }, border:THIN_BOTTOM_BORDER, alignment:{ horizontal:'center' } } },
+      bodyCell(goalForDate(d), null, 'center')
     ]);
   });
   const ws2 = XLSX.utils.aoa_to_sheet(summaryRows);
-  ws2['!cols'] = [{ wch:12 }, { wch:13 }, { wch:14 }, { wch:12 }];
+  ws2['!cols'] = [{ wch:12 }, { wch:13 }, { wch:14 }, { wch:12 }, { wch:16 }];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws1, 'Feeding Log');
@@ -1474,13 +1507,14 @@ function sevenDayStartTs() {
 
 async function loadReviewData() {
   const tbody = getEl('review-table-body');
-  tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">Loading…</td></tr>';
   try {
     const since = sevenDayStartTs();
     const sinceDate = since.slice(0,10);
-    const [logRows, d3Rows] = await Promise.all([
+    const [logRows, d3Rows, goalRows] = await Promise.all([
       sbFetch(`mmx_baby_log2?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=1000`),
-      sbFetch(`mmx_baby_d3?date=gte.${sinceDate}&order=date.desc`)
+      sbFetch(`mmx_baby_d3?date=gte.${sinceDate}&order=date.desc`),
+      sbFetch(`mmx_baby_goal_log?date=gte.${sinceDate}&order=date.desc`)
     ]);
 
     // Bucket log entries by date
@@ -1498,6 +1532,8 @@ async function loadReviewData() {
     });
     const d3ByDate = {};
     (d3Rows||[]).forEach(r => { d3ByDate[r.date] = !!r.d3; });
+    const goalByDate = {};
+    (goalRows||[]).forEach(r => { goalByDate[r.date] = r.ml_goal; });
 
     // Build the 7 date strings, today first
     const dates = [];
@@ -1509,12 +1545,17 @@ async function loadReviewData() {
     tbody.innerHTML = dates.map(dateStr => {
       const day = byDate[dateStr] || { breast:0, formula:0, pumped:0, tummy:0 };
       const d3  = !!d3ByDate[dateStr];
+      const goal = goalByDate[dateStr] != null ? goalByDate[dateStr] : 720;
+      const diff = Math.round(day.breast + day.formula - goal);
+      const diffClass = diff < 0 ? 'diff-neg' : 'diff-pos';
+      const diffLabel = diff > 0 ? `+${diff}` : `${diff}`;
       const [y,m,dd] = dateStr.split('-');
       const label = `${m}/${dd}`;
       return `<tr>
         <td>${label}</td>
         <td>${Math.round(day.breast)}</td>
         <td>${Math.round(day.formula)}</td>
+        <td class="${diffClass}">${diffLabel}</td>
         <td class="${d3?'d3-yes':'d3-no'}">${d3?'Yes':'No'}</td>
         <td>${day.pumped}</td>
         <td>${day.tummy}</td>
@@ -1522,7 +1563,7 @@ async function loadReviewData() {
     }).join('');
   } catch (err) {
     console.error('loadReviewData failed:', err);
-    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">Could not load</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">Could not load</td></tr>';
   }
 }
 
