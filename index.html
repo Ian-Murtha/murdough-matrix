@@ -381,7 +381,7 @@
   <!-- ══ COMMBADGE TAB ══ -->
   <div class="panel" id="panel-commbadge" style="padding:0">
     <iframe id="commbadge-frame"
-      src="https://ian-murtha.github.io/commbadge/?embed=1"
+      data-src="https://ian-murtha.github.io/commbadge/?embed=1"
       allow="camera; microphone"
       style="width:100%;height:calc(100dvh - 140px);border:0;border-radius:var(--r-sm);background:transparent">
     </iframe>
@@ -390,7 +390,7 @@
   <!-- ══ TRACKER TAB ══ -->
   <div class="panel" id="panel-tracker" style="padding:0">
     <iframe id="tracker-frame"
-      src="https://ian-murtha.github.io/mmx-todo-tracker/?embed=1"
+      data-src="https://ian-murtha.github.io/mmx-todo-tracker/?embed=1"
       style="width:100%;height:calc(100dvh - 140px);border:0;border-radius:var(--r-sm);background:transparent">
     </iframe>
   </div>
@@ -398,7 +398,7 @@
   <!-- ══ BUDGET TAB ══ -->
   <div class="panel" id="panel-budget" style="padding:0">
     <iframe id="budget-frame"
-      src="https://docs.google.com/spreadsheets/d/17sgZExlj1oS7cEhEncmK5Y5Fx5hj-dpI2mrWQswwgAY/edit"
+      data-src="https://docs.google.com/spreadsheets/d/17sgZExlj1oS7cEhEncmK5Y5Fx5hj-dpI2mrWQswwgAY/edit"
       style="width:100%;height:calc(100dvh - 140px);border:0;border-radius:var(--r-sm);background:var(--surface)">
     </iframe>
   </div>
@@ -437,7 +437,7 @@
 
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.6</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.7</div>
     </div>
   </div>
 
@@ -606,7 +606,7 @@ function showToast(msg) {
 // ── Tab order & drag-reorder ──────────────────────────────────
 const DEFAULT_TAB_ORDER = ['baby','bp','media','commbadge','tracker','budget','weather','settings'];
 const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', commbadge:'Video', tracker:'Tracker', budget:'Budget', weather:'Weather', settings:'Settings' };
-const LOAD_FNS   = { weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => syncCommBadgeSettings(), settings: () => { renderSettingsAuthState(); renderTabVisibilityList(); getEl('ml-goal-input').value = mlGoal; } };
+const LOAD_FNS   = { weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => { if (!ensureFrameLoaded('commbadge-frame', syncCommBadgeSettings)) syncCommBadgeSettings(); }, tracker: () => ensureFrameLoaded('tracker-frame'), budget: () => ensureFrameLoaded('budget-frame'), settings: () => { renderSettingsAuthState(); renderTabVisibilityList(); getEl('ml-goal-input').value = mlGoal; } };
 
 // Tabs that require a logged-in Supabase Auth session. Everything else is public.
 const PROTECTED_TABS = ['bp', 'budget', 'tracker'];
@@ -629,6 +629,17 @@ let dragSrcName  = null;
 
 function saveTabOrder() { localStorage.setItem('mmx_tab_order', JSON.stringify(tabOrder)); }
 function saveTabOrderIfChanged() { saveTabOrder(); }
+
+// Embedded iframes (CommBadge, Tracker, Budget) load lazily: their URL sits in data-src and is
+// only applied the first time their tab is opened. After that the src is left alone, so the
+// embedded app keeps its state when switching tabs. Returns true if this call started the load.
+function ensureFrameLoaded(id, onLoad) {
+  const frame = getEl(id);
+  if (!frame || frame.getAttribute('src') || !frame.dataset.src) return false;
+  if (onLoad) frame.addEventListener('load', onLoad, { once: true });
+  frame.setAttribute('src', frame.dataset.src);
+  return true;
+}
 
 // Send lightweight settings (currently just selected camera, if MMX has one) into the
 // CommBadge iframe once it's ready. Harmless if CommBadge ignores or hasn't loaded yet.
