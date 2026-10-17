@@ -437,7 +437,7 @@
 
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.7</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.7.1</div>
     </div>
   </div>
 
@@ -517,6 +517,7 @@ async function initAuth() {
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     const wasLoggedIn = !!authSession;
     authSession = session;
+    if (wasLoggedIn && !authSession) resetProtectedFrames(); // logged out: clear Tracker/Budget embeds
     // If we just logged out while sitting on a now-inaccessible protected tab, jump away.
     if (wasLoggedIn && !authSession && PROTECTED_TABS.includes(activeTab)) {
       switchTab(tabOrder.find(n => !hiddenTabs.includes(n) && !PROTECTED_TABS.includes(n)) || 'baby');
@@ -639,6 +640,19 @@ function ensureFrameLoaded(id, onLoad) {
   if (onLoad) frame.addEventListener('load', onLoad, { once: true });
   frame.setAttribute('src', frame.dataset.src);
   return true;
+}
+
+// On logout, drop anything the login-only embeds (Tracker, Budget) had loaded. Each frame is
+// swapped for a fresh copy with no src, which discards the loaded page and its history; the next
+// open (after logging back in) loads it from scratch via ensureFrameLoaded.
+function resetProtectedFrames() {
+  ['tracker-frame', 'budget-frame'].forEach(id => {
+    const frame = getEl(id);
+    if (!frame || !frame.getAttribute('src')) return;
+    const fresh = frame.cloneNode(false);
+    fresh.removeAttribute('src');
+    frame.replaceWith(fresh);
+  });
 }
 
 // Send lightweight settings (currently just selected camera, if MMX has one) into the
