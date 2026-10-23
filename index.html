@@ -315,7 +315,7 @@
           <tbody id="review-table-body"></tbody>
         </table>
       </div>
-      <button class="export-btn" onclick="exportBabyCSV()">&#8659; Download baby log (Excel)</button>
+      <button class="export-btn" onclick="exportBabyXlsx()">&#8659; Download baby log (Excel)</button>
     </div>
   </div>
 
@@ -437,7 +437,7 @@
 
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.7.1</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.8</div>
     </div>
   </div>
 
@@ -566,7 +566,12 @@ let d3Today = false;
 let feedType = 'breast';    // feeding modal slider state
 let editFeedType = 'breast'; // entry2 edit modal slider state
 let editingEntry2 = null;    // row currently open in entry2-edit-modal
-let mlGoal = 720;            // shared daily feeding goal, loaded from mmx_baby_goal
+const DEFAULT_ML_GOAL = 720;  // used for any day with no logged goal
+const BABY_NAME  = 'Isla';
+const BIRTH_DATE = new Date('2026-05-20T00:00:00');
+let mlGoal = DEFAULT_ML_GOAL; // shared daily feeding goal, loaded from mmx_baby_goal
+let lastSeenDate = '';       // detects the calendar day changing while the app stays open
+let logBusy = false;         // guards double-taps on the logging buttons
 let noteSaveTimer = null, noteEditing = false;
 
 // ── State ─────────────────────────────────────────────────────
@@ -576,17 +581,17 @@ let allBP = [], chartBP = null;
 const getEl = id => document.getElementById(id);
 const pad   = n  => String(n).padStart(2, '0');
 
-function nowTs() {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+// Local-time date/timestamp strings. ts values are stored in local time, so
+// anything compared against them must be built from local components too
+// (never toISOString(), which is UTC).
+function dateStr(d = new Date()) {
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 }
-function sevenDayCutoff() {
-  // Build using local time components (matching nowTs()'s format) rather than
-  // toISOString() (UTC) — ts values are stored in local time, so the cutoff
-  // must be too, or the comparison is off by the timezone offset at the boundary.
-  const d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+function tsStr(d = new Date()) {
+  return `${dateStr(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
+function nowTs() { return tsStr(); }
+function sevenDayCutoff() { return tsStr(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)); }
 function fmt12time(tsStr) {
   const [hh, mm] = tsStr.split(' ')[1].split(':');
   const h = parseInt(hh);
@@ -866,10 +871,7 @@ async function storageFetch(path, options={}) {
 }
 
 // ── Baby tab v2 (midnight-to-midnight) ─────────────────────────
-function todayDateStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-}
+function todayDateStr() { return dateStr(); }
 function todayStartTs() { return todayDateStr() + ' 00:00:00'; }
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -936,7 +938,7 @@ function formatLastEventTime(tsStr) {
   const timeLabel = fmt12time(tsStr);
   if (datePart === todayDateStr()) return timeLabel;
   const y = new Date(); y.setDate(y.getDate()-1);
-  const yestStr = `${y.getFullYear()}-${pad(y.getMonth()+1)}-${pad(y.getDate())}`;
+  const yestStr = dateStr(y);
   if (datePart === yestStr) return `Yesterday ${timeLabel}`;
   const [,m,d] = datePart.split('-');
   return `${parseInt(m)}/${parseInt(d)} ${timeLabel}`;
@@ -951,6 +953,81 @@ async function loadLastEvents() {
     getEl('last-feeding-time').textContent = (feedRows && feedRows.length) ? formatLastEventTime(feedRows[0].ts) : '—';
     getEl('last-pumped-time').textContent  = (pumpRows && pumpRows.length) ? formatLastEventTime(pumpRows[0].ts) : '—';
   } catch (err) { console.error('loadLastEvents failed:', err); }
+}
+
+// Fetch every row for a path by paging, so nothing is silently cut off at a fixed limit.
+// `path` must include a deterministic order= clause.
+async function fetchAll(path, pageSize = 1000) {
+  const out = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const rows = await sbFetch(`${path}&limit=${pageSize}&offset=${offset}`);
+    if (!rows || !rows.length) break;
+    out.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+  return out;
+}
+
+// One row per calendar day. Uses a single upsert when the table has a unique
+// constraint on `date` (see the v3.8 SQL); otherwise falls back to read-then-write.
+async function upsertByDate(table, date, fields) {
+  try {
+    await sbFetch(`${table}?on_conflict=date`, { method:'POST', prefer:'resolution=merge-duplicates,return=minimal', body:JSON.stringify({ date, ...fields }) });
+    return;
+  } catch (err) { console.warn(`upsert on ${table} failed, using fallback:`, err.message); }
+  const rows = await sbFetch(`${table}?date=eq.${date}&order=id.asc&limit=1`);
+  if (rows && rows.length) {
+    await sbFetch(`${table}?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify(fields) });
+  } else {
+    await sbFetch(table, { method:'POST', prefer:'return=minimal', body:JSON.stringify({ date, ...fields }) });
+  }
+}
+
+// Groups log rows by calendar day with per-day totals/counts. Breast is the default
+// feed type, matching the app-wide Breast/Formula convention.
+function bucketByDate(rows) {
+  const byDate = {};
+  (rows||[]).forEach(r => {
+    const d = r.ts.slice(0,10);
+    const day = byDate[d] || (byDate[d] = { feedings:[], breast:0, formula:0, pumped:0, tummy:0 });
+    if (r.kind === 'feeding') {
+      const amt = parseFloat(r.amount) || 0;
+      day.feedings.push(r);
+      if (r.feed_type === 'formula') day.formula += amt; else day.breast += amt;
+    }
+    else if (r.kind === 'pumped') day.pumped++;
+    else if (r.kind === 'tummy') day.tummy++;
+  });
+  return byDate;
+}
+
+// Map of date -> goal actually in effect that day. Days with no entry fall back to DEFAULT_ML_GOAL.
+async function loadGoalMap(sinceDate) {
+  const rows = await fetchAll(`mmx_baby_goal_log?${sinceDate ? `date=gte.${sinceDate}&` : ''}order=date.asc`);
+  const map = {};
+  rows.forEach(r => { map[r.date] = r.ml_goal; });
+  return d => (map[d] != null ? map[d] : DEFAULT_ML_GOAL);
+}
+
+// Called every poll and when the app returns to the foreground. If the calendar day
+// has changed while the app stayed open, refresh everything that is day-scoped.
+function checkDayRollover() {
+  const today = todayDateStr();
+  if (lastSeenDate && lastSeenDate !== today) {
+    lastSeenDate = today;
+    updateBabyHeader();
+    loadD3();
+    loadMlGoal(); // also logs the new day's goal
+    loadBabyLog2();
+  }
+  lastSeenDate = today;
+}
+
+// Runs fn unless another logging action is already in flight (prevents double-tap duplicates).
+async function guarded(fn) {
+  if (logBusy) return;
+  logBusy = true;
+  try { await fn(); } finally { logBusy = false; }
 }
 
 async function loadBabyLog2() {
@@ -984,12 +1061,7 @@ async function toggleD3() {
   const msg = newVal ? 'Mark D3 as given today?' : 'Unmark D3 for today?';
   if (!confirm(msg)) return;
   try {
-    const rows = await sbFetch(`mmx_baby_d3?date=eq.${date}&limit=1`);
-    if (rows && rows.length) {
-      await sbFetch(`mmx_baby_d3?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({ d3:newVal }) });
-    } else {
-      await sbFetch('mmx_baby_d3', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ date, d3:newVal }) });
-    }
+    await upsertByDate('mmx_baby_d3', date, { d3:newVal });
     d3Today = newVal;
     getEl('d3-btn').classList.toggle('on', d3Today);
     vibrate();
@@ -1009,28 +1081,32 @@ function closeFeedingModal() { getEl('feeding-modal').classList.remove('open'); 
 // two-position segmented control (click either half) rather than a draggable
 // thumb, which is simpler and just as functional for a binary choice.
 function handleFeedSliderClick(e, which) {
-  const el = which === 'feed' ? getEl('feed-slider') : getEl('entry2-edit-slider');
+  const el = getEl(which === 'feed' ? 'feed-slider' : 'entry2-edit-slider');
   const rect = el.getBoundingClientRect();
-  const clickedFormula = (e.clientX - rect.left) > rect.width / 2;
-  if (which === 'feed') { feedType = clickedFormula ? 'formula' : 'breast'; el.classList.toggle('formula', clickedFormula); }
-  else { editFeedType = clickedFormula ? 'formula' : 'breast'; el.classList.toggle('formula', clickedFormula); }
+  const type = (e.clientX - rect.left) > rect.width / 2 ? 'formula' : 'breast';
+  if (which === 'feed') feedType = type; else editFeedType = type;
+  el.classList.toggle('formula', type === 'formula');
 }
 
 async function submitFeeding() {
   const amt = parseFloat(getEl('feeding-amt').value);
   if (isNaN(amt) || amt <= 0) { showToast('Enter a valid amount'); return; }
-  try {
-    await sbFetch('mmx_baby_log2', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ts:nowTs(), kind:'feeding', amount:amt, feed_type:feedType }) });
-    vibrate(); closeFeedingModal(); await loadBabyLog2(); showToast('Feeding logged');
-  } catch (err) { showToast('Error: '+err.message); }
+  await guarded(async () => {
+    try {
+      await sbFetch('mmx_baby_log2', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ts:nowTs(), kind:'feeding', amount:amt, feed_type:feedType }) });
+      vibrate(); closeFeedingModal(); await loadBabyLog2(); showToast('Feeding logged');
+    } catch (err) { showToast('Error: '+err.message); }
+  });
 }
 
 // ── Pumped / Tummy quick log ──
 async function logQuick(kind) {
-  try {
-    await sbFetch('mmx_baby_log2', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ts:nowTs(), kind }) });
-    vibrate(); await loadBabyLog2(); showToast(kind==='pumped' ? 'Pumped logged' : 'Tummy time logged');
-  } catch (err) { showToast('Error: '+err.message); }
+  await guarded(async () => {
+    try {
+      await sbFetch('mmx_baby_log2', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ts:nowTs(), kind }) });
+      vibrate(); await loadBabyLog2(); showToast(kind==='pumped' ? 'Pumped logged' : 'Tummy time logged');
+    } catch (err) { showToast('Error: '+err.message); }
+  });
 }
 
 function renderQuickList(kind) {
@@ -1072,22 +1148,11 @@ function renderBabyTotals() {
   getEl('baby-ml-fill').style.width = pct + '%';
 }
 
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-}
-
 // Records the mL goal actually in effect for a given calendar day, so exports
 // can later show the true historical goal instead of whatever it is "now".
-async function logDailyGoal(dateStr, val) {
-  try {
-    const rows = await sbFetch(`mmx_baby_goal_log?date=eq.${dateStr}&limit=1`);
-    if (rows && rows.length) {
-      await sbFetch(`mmx_baby_goal_log?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({ ml_goal:val }) });
-    } else {
-      await sbFetch('mmx_baby_goal_log', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ date:dateStr, ml_goal:val }) });
-    }
-  } catch (err) { console.error('logDailyGoal failed:', err); }
+async function logDailyGoal(date, val) {
+  try { await upsertByDate('mmx_baby_goal_log', date, { ml_goal:val }); }
+  catch (err) { console.error('logDailyGoal failed:', err); }
 }
 
 async function loadMlGoal() {
@@ -1096,7 +1161,7 @@ async function loadMlGoal() {
     if (rows && rows.length && rows[0].ml_goal) mlGoal = rows[0].ml_goal;
   } catch (err) { console.error('loadMlGoal failed:', err); }
   renderBabyTotals();
-  logDailyGoal(todayStr(), mlGoal);
+  logDailyGoal(todayDateStr(), mlGoal);
 }
 
 async function saveMlGoal() {
@@ -1111,7 +1176,7 @@ async function saveMlGoal() {
     }
     mlGoal = val;
     renderBabyTotals();
-    logDailyGoal(todayStr(), mlGoal);
+    logDailyGoal(todayDateStr(), mlGoal);
     showToast('Goal saved');
   } catch (err) { showToast('Could not save goal'); }
 }
@@ -1139,10 +1204,12 @@ async function saveEntry2Edit() {
   // since entries are always scoped to the day they were logged in this midnight-to-midnight model.
   const datePart = editingEntry2.ts.slice(0,10);
   const timeVal  = getEl('entry2-edit-time').value; // 'HH:MM'
+  if (!/^\d{2}:\d{2}$/.test(timeVal)) { showToast('Enter a valid time'); return; }
   const payload  = { ts: `${datePart} ${timeVal}:00` };
   if (editingEntry2.kind === 'feeding') {
     const amt = parseFloat(getEl('entry2-edit-amt').value);
-    payload.amount = isNaN(amt) ? null : amt;
+    if (isNaN(amt) || amt <= 0) { showToast('Enter a valid amount'); return; }
+    payload.amount = amt;
     payload.feed_type = editFeedType;
   }
   try {
@@ -1432,86 +1499,88 @@ async function checkForUpdate() {
   }
 }
 
-// ── CSV Exports ───────────────────────────────────────────────
-async function exportBabyCSV() {
-  const rows = await sbFetch('mmx_baby_log2?order=ts.desc&limit=5000');
-  const feedings = (rows||[]).filter(r => r.kind === 'feeding');
-  if (!feedings.length) { showToast('No feeding entries'); return; }
+// ── Excel export ──────────────────────────────────────────────
+// e.g. "Isla Feeding Log - Oct 23 2026 3-45 PM ET.xlsx" (Eastern Time, no characters
+// that are illegal in filenames).
+function babyExportFilename() {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone:'America/New_York', month:'short', day:'numeric', year:'numeric',
+    hour:'numeric', minute:'2-digit', hour12:true
+  }).formatToParts(new Date()).map(p => [p.type, p.value]));
+  return `${BABY_NAME} Feeding Log - ${parts.month} ${parts.day} ${parts.year} ${parts.hour}-${parts.minute} ${parts.dayPeriod} ET.xlsx`;
+}
 
-  // Look up the goal actually in effect for each day. Days with no logged
-  // value (i.e. before this feature existed) default to the original 720ml.
-  let goalByDate = {};
+async function exportBabyXlsx() {
+  if (typeof XLSX === 'undefined') { showToast('Excel library not loaded — check connection'); return; }
   try {
-    const goalRows = await sbFetch('mmx_baby_goal_log?order=date.asc&limit=5000');
-    (goalRows||[]).forEach(r => { goalByDate[r.date] = r.ml_goal; });
-  } catch (err) { console.error('loading goal log failed:', err); }
-  const DEFAULT_GOAL = 720;
-  const goalForDate = d => (goalByDate[d] != null ? goalByDate[d] : DEFAULT_GOAL);
+    const feedings = await fetchAll('mmx_baby_log2?kind=eq.feeding&order=ts.desc,id.desc');
+    if (!feedings.length) { showToast('No feeding entries'); return; }
 
-  // Group by date, then sort each day's entries chronologically (oldest first within a day),
-  // with the most recent day listed first — matching the reviewed mock's layout.
-  const byDate = {};
-  feedings.forEach(r => {
-    const d = r.ts.slice(0,10);
-    if (!byDate[d]) byDate[d] = [];
-    byDate[d].push(r);
-  });
-  const dates = Object.keys(byDate).sort().reverse();
-  dates.forEach(d => byDate[d].sort((a,b) => a.ts < b.ts ? -1 : 1));
+    // Goal actually in effect for each day; days with no logged value use DEFAULT_ML_GOAL.
+    let goalForDate = () => DEFAULT_ML_GOAL;
+    try { goalForDate = await loadGoalMap(); }
+    catch (err) { console.error('loading goal log failed:', err); }
 
-  const HEADER_FONT = { name:'Arial', bold:true, color:{ rgb:'FFFFFF' }, sz:11 };
-  const HEADER_FILL = { patternType:'solid', fgColor:{ rgb:'4A6FA5' } };
-  const HEADER_ALIGN = { horizontal:'center', vertical:'center' };
-  const BODY_FONT = { name:'Arial', sz:11 };
-  const THIN_BOTTOM_BORDER = { bottom:{ style:'thin', color:{ rgb:'D0D0D0' } } };
-  const TYPE_FILLS = {
-    Breast:  { patternType:'solid', fgColor:{ rgb:'D6E4F0' } },
-    Formula: { patternType:'solid', fgColor:{ rgb:'FDE9D9' } }
-  };
-  const headerCell = v => ({ v, t:'s', s:{ font:HEADER_FONT, fill:HEADER_FILL, alignment:HEADER_ALIGN } });
-  const bodyCell = (v, fill, align) => ({
-    v, t: typeof v === 'number' ? 'n' : 's',
-    s: { font:BODY_FONT, fill, border:THIN_BOTTOM_BORDER, alignment:{ horizontal: align||'left' } }
-  });
+    // Most recent day first; entries within a day oldest first.
+    const byDate = bucketByDate(feedings);
+    const dates = Object.keys(byDate).sort().reverse();
+    dates.forEach(d => byDate[d].feedings.sort((a,b) => a.ts < b.ts ? -1 : 1));
 
-  // ── Sheet 1: Feeding Log ──
-  const feedRows = [[headerCell('Date'), headerCell('Time'), headerCell('Amount (mL)'), headerCell('Type')]];
-  dates.forEach(d => {
-    byDate[d].forEach(r => {
-      const typeLabel = r.feed_type === 'formula' ? 'Formula' : 'Breast';
-      const fill = TYPE_FILLS[typeLabel];
-      feedRows.push([
-        bodyCell(d, fill, 'left'),
-        bodyCell(fmt12time(r.ts), fill, 'left'),
-        bodyCell(r.amount ? Math.round(parseFloat(r.amount)) : 0, fill, 'center'),
-        bodyCell(typeLabel, fill, 'center')
+    const HEADER_FONT = { name:'Arial', bold:true, color:{ rgb:'FFFFFF' }, sz:11 };
+    const HEADER_FILL = { patternType:'solid', fgColor:{ rgb:'4A6FA5' } };
+    const HEADER_ALIGN = { horizontal:'center', vertical:'center' };
+    const BODY_FONT = { name:'Arial', sz:11 };
+    const THIN_BOTTOM_BORDER = { bottom:{ style:'thin', color:{ rgb:'D0D0D0' } } };
+    const TYPE_FILLS = {
+      Breast:  { patternType:'solid', fgColor:{ rgb:'D6E4F0' } },
+      Formula: { patternType:'solid', fgColor:{ rgb:'FDE9D9' } }
+    };
+    const headerCell = v => ({ v, t:'s', s:{ font:HEADER_FONT, fill:HEADER_FILL, alignment:HEADER_ALIGN } });
+    const bodyCell = (v, fill, align) => ({
+      v, t: typeof v === 'number' ? 'n' : 's',
+      s: { font:BODY_FONT, fill, border:THIN_BOTTOM_BORDER, alignment:{ horizontal: align||'left' } }
+    });
+
+    // ── Sheet 1: Feeding Log ──
+    const feedRows = [[headerCell('Date'), headerCell('Time'), headerCell('Amount (mL)'), headerCell('Type')]];
+    dates.forEach(d => {
+      byDate[d].feedings.forEach(r => {
+        const typeLabel = r.feed_type === 'formula' ? 'Formula' : 'Breast';
+        const fill = TYPE_FILLS[typeLabel];
+        feedRows.push([
+          bodyCell(d, fill, 'left'),
+          bodyCell(fmt12time(r.ts), fill, 'left'),
+          bodyCell(r.amount ? Math.round(parseFloat(r.amount)) : 0, fill, 'center'),
+          bodyCell(typeLabel, fill, 'center')
+        ]);
+      });
+    });
+    const ws1 = XLSX.utils.aoa_to_sheet(feedRows);
+    ws1['!cols'] = [{ wch:12 }, { wch:10 }, { wch:14 }, { wch:12 }];
+
+    // ── Sheet 2: Daily Summary ──
+    const summaryRows = [[headerCell('Day'), headerCell('Total Breast'), headerCell('Total Formula'), headerCell('Day Total'), headerCell('Daily Goal (mL)')]];
+    dates.forEach(d => {
+      const { breast, formula } = byDate[d];
+      summaryRows.push([
+        bodyCell(d, null, 'left'),
+        bodyCell(Math.round(breast), null, 'center'),
+        bodyCell(Math.round(formula), null, 'center'),
+        { v: Math.round(breast + formula), t:'n', s: { font:{ name:'Arial', sz:11, bold:true }, border:THIN_BOTTOM_BORDER, alignment:{ horizontal:'center' } } },
+        bodyCell(goalForDate(d), null, 'center')
       ]);
     });
-  });
-  const ws1 = XLSX.utils.aoa_to_sheet(feedRows);
-  ws1['!cols'] = [{ wch:12 }, { wch:10 }, { wch:14 }, { wch:12 }];
+    const ws2 = XLSX.utils.aoa_to_sheet(summaryRows);
+    ws2['!cols'] = [{ wch:12 }, { wch:13 }, { wch:14 }, { wch:12 }, { wch:16 }];
 
-  // ── Sheet 2: Daily Summary ──
-  const summaryRows = [[headerCell('Day'), headerCell('Total Breast'), headerCell('Total Formula'), headerCell('Day Total'), headerCell('Daily Goal (mL)')]];
-  dates.forEach(d => {
-    const breast  = byDate[d].filter(r => r.feed_type !== 'formula').reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
-    const formula = byDate[d].filter(r => r.feed_type === 'formula').reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
-    const total   = breast + formula;
-    summaryRows.push([
-      bodyCell(d, null, 'left'),
-      bodyCell(Math.round(breast), null, 'center'),
-      bodyCell(Math.round(formula), null, 'center'),
-      { v: Math.round(total), t:'n', s: { font:{ name:'Arial', sz:11, bold:true }, border:THIN_BOTTOM_BORDER, alignment:{ horizontal:'center' } } },
-      bodyCell(goalForDate(d), null, 'center')
-    ]);
-  });
-  const ws2 = XLSX.utils.aoa_to_sheet(summaryRows);
-  ws2['!cols'] = [{ wch:12 }, { wch:13 }, { wch:14 }, { wch:12 }, { wch:16 }];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws1, 'Feeding Log');
-  XLSX.utils.book_append_sheet(wb, ws2, 'Daily Summary');
-  XLSX.writeFile(wb, 'baby_log_'+new Date().toISOString().slice(0,10)+'.xlsx');
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws1, 'Feeding Log');
+    XLSX.utils.book_append_sheet(wb, ws2, 'Daily Summary');
+    XLSX.writeFile(wb, babyExportFilename());
+  } catch (err) {
+    console.error('exportBabyXlsx failed:', err);
+    showToast('Export failed: ' + err.message);
+  }
 }
 
 // ── Past 7 days review ──
@@ -1527,7 +1596,7 @@ function sevenDayStartTs() {
   // Midnight, 6 days ago (local time) — combined with today gives exactly 7 calendar days.
   const d = new Date();
   d.setDate(d.getDate() - 6);
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} 00:00:00`;
+  return dateStr(d) + ' 00:00:00';
 }
 
 async function loadReviewData() {
@@ -1536,45 +1605,30 @@ async function loadReviewData() {
   try {
     const since = sevenDayStartTs();
     const sinceDate = since.slice(0,10);
-    const [logRows, d3Rows, goalRows] = await Promise.all([
-      sbFetch(`mmx_baby_log2?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=1000`),
+    const [logRows, d3Rows, goalForDate] = await Promise.all([
+      fetchAll(`mmx_baby_log2?ts=gte.${encodeURIComponent(since)}&order=ts.desc,id.desc`),
       sbFetch(`mmx_baby_d3?date=gte.${sinceDate}&order=date.desc`),
-      sbFetch(`mmx_baby_goal_log?date=gte.${sinceDate}&order=date.desc`)
+      loadGoalMap(sinceDate)
     ]);
 
-    // Bucket log entries by date
-    const byDate = {};
-    (logRows||[]).forEach(r => {
-      const d = r.ts.slice(0,10);
-      if (!byDate[d]) byDate[d] = { breast:0, formula:0, pumped:0, tummy:0 };
-      if (r.kind === 'feeding') {
-        const amt = parseFloat(r.amount) || 0;
-        if (r.feed_type === 'formula') byDate[d].formula += amt;
-        else byDate[d].breast += amt; // defaults to breast, matching the app-wide Breast/Formula convention
-      }
-      else if (r.kind === 'pumped') byDate[d].pumped++;
-      else if (r.kind === 'tummy') byDate[d].tummy++;
-    });
+    const byDate = bucketByDate(logRows);
     const d3ByDate = {};
     (d3Rows||[]).forEach(r => { d3ByDate[r.date] = !!r.d3; });
-    const goalByDate = {};
-    (goalRows||[]).forEach(r => { goalByDate[r.date] = r.ml_goal; });
 
     // Build the 7 date strings, today first
     const dates = [];
     for (let i=0; i<7; i++) {
       const d = new Date(); d.setDate(d.getDate()-i);
-      dates.push(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);
+      dates.push(dateStr(d));
     }
 
     tbody.innerHTML = dates.map(dateStr => {
       const day = byDate[dateStr] || { breast:0, formula:0, pumped:0, tummy:0 };
       const d3  = !!d3ByDate[dateStr];
-      const goal = goalByDate[dateStr] != null ? goalByDate[dateStr] : 720;
-      const diff = Math.round(day.breast + day.formula - goal);
+      const diff = Math.round(day.breast + day.formula - goalForDate(dateStr));
       const diffClass = diff < 0 ? 'diff-neg' : 'diff-pos';
       const diffLabel = diff > 0 ? `+${diff}` : `${diff}`;
-      const [y,m,dd] = dateStr.split('-');
+      const [, m, dd] = dateStr.split('-');
       const label = `${m}/${dd}`;
       return `<tr>
         <td>${label}</td>
@@ -1601,8 +1655,6 @@ function downloadCSV(lines, filename) {
   const csv = lines.map(l=>l.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a   = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download=filename; a.click();
 }
-
-const BIRTH_DATE = new Date('2026-05-20T00:00:00');
 
 function computeAgeLabel() {
   const now = new Date();
@@ -1644,7 +1696,7 @@ function updateBabyHeader() {
   const ageLabel = computeAgeLabel();
   const header = getEl('baby-date-header');
   if (ageLabel) {
-    header.innerHTML = `${formatDateHeader()}<br>Isla is<br>${ageLabel} old!`;
+    header.innerHTML = `${formatDateHeader()}<br>${BABY_NAME} is<br>${ageLabel} old!`;
   } else {
     header.textContent = formatDateHeader();
   }
@@ -1653,6 +1705,7 @@ function updateBabyHeader() {
 // ── Init ─────────────────────────────────────────────────────
 async function init() {
   await initAuth();
+  lastSeenDate = todayDateStr();
   updateBabyHeader();
   loadNote();
   loadBabyLog2();
@@ -1671,7 +1724,9 @@ async function init() {
   switchTab(target);
 }
 
-setInterval(loadBabyLog2, 30000);
+setInterval(() => { checkDayRollover(); loadBabyLog2(); }, 30000);
+// Timers are throttled while the PWA is backgrounded, so also check as soon as it returns.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkDayRollover(); });
 setInterval(loadD3, 30000);
 setInterval(loadNote, 30000);
 init();
