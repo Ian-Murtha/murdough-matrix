@@ -1,11 +1,18 @@
 // Cache name is tied to the app version — bump this with every build so
 // devices automatically drop the old cache and fetch fresh files.
-const CACHE = 'murdough-matrix-v3.8';
+const CACHE = 'murdough-matrix-v3.9';
 const ASSETS = ['/murdough-matrix/', '/murdough-matrix/index.html', '/murdough-matrix/manifest.json'];
+// Excel export library (CDN). Cached so the export works offline; best-effort so a CDN
+// hiccup can never block a service-worker install.
+const XLSX_URL = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS))
+    caches.open(CACHE).then(c =>
+      c.addAll(ASSETS).then(() =>
+        fetch(XLSX_URL, { mode: 'no-cors' }).then(res => c.put(XLSX_URL, res)).catch(() => {})
+      )
+    )
   );
   self.skipWaiting();
 });
@@ -42,7 +49,7 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-  if (e.request.url.includes('fonts.googleapis.com') || e.request.url.includes('fonts.gstatic.com')) {
+  if (e.request.url.includes('fonts.googleapis.com') || e.request.url.includes('fonts.gstatic.com') || e.request.url === XLSX_URL) {
     e.respondWith(
       caches.open(CACHE).then(c =>
         c.match(e.request).then(cached =>

@@ -240,6 +240,8 @@
     .empty-state { text-align: center; color: var(--muted); font-family: var(--mono); font-size: 12px; padding: 2rem 0; }
     .toast { position: fixed; bottom: calc(1.5rem + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(10px); background: var(--surface2); border: 1px solid var(--border2); border-radius: 999px; padding: 9px 20px; font-family: var(--mono); font-size: 12px; color: var(--text); opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none; white-space: nowrap; z-index: 400; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.has-action { pointer-events: auto; }
+    .toast-action { margin-left: 14px; background: none; border: none; padding: 0; font: inherit; font-weight: 600; color: var(--accent); cursor: pointer; }
 
     @media (min-width: 480px) { .app-header, main { max-width: 480px; margin-left: auto; margin-right: auto; width: 100%; } }
     @media (min-width: 480px) { main.wide-tab { max-width: 900px; } }
@@ -437,7 +439,7 @@
 
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.8</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.9</div>
     </div>
   </div>
 
@@ -604,15 +606,26 @@ function fmt12full(tsStr) {
 }
 function vibrate()     { if (navigator.vibrate) navigator.vibrate(40); }
 
-function showToast(msg) {
-  const t = getEl('toast'); t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
+let toastTimer = null;
+// Optional action = { label, fn } adds a tappable button (e.g. Undo) and keeps the toast up longer.
+function showToast(msg, action) {
+  const t = getEl('toast'); t.textContent = msg;
+  t.classList.toggle('has-action', !!action);
+  if (action) {
+    const b = document.createElement('button');
+    b.className = 'toast-action'; b.textContent = action.label;
+    b.onclick = () => { t.classList.remove('show'); clearTimeout(toastTimer); action.fn(); };
+    t.appendChild(b);
+  }
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), action ? 5000 : 2200);
 }
 
 // ── Tab order & drag-reorder ──────────────────────────────────
 const DEFAULT_TAB_ORDER = ['baby','bp','media','commbadge','tracker','budget','weather','settings'];
 const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', commbadge:'Video', tracker:'Tracker', budget:'Budget', weather:'Weather', settings:'Settings' };
-const LOAD_FNS   = { weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => { if (!ensureFrameLoaded('commbadge-frame', syncCommBadgeSettings)) syncCommBadgeSettings(); }, tracker: () => ensureFrameLoaded('tracker-frame'), budget: () => ensureFrameLoaded('budget-frame'), settings: () => { renderSettingsAuthState(); renderTabVisibilityList(); getEl('ml-goal-input').value = mlGoal; } };
+const LOAD_FNS   = { baby: () => refreshBaby(), weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => { if (!ensureFrameLoaded('commbadge-frame', syncCommBadgeSettings)) syncCommBadgeSettings(); }, tracker: () => ensureFrameLoaded('tracker-frame'), budget: () => ensureFrameLoaded('budget-frame'), settings: () => { renderSettingsAuthState(); renderTabVisibilityList(); getEl('ml-goal-input').value = mlGoal; } };
 
 // Tabs that require a logged-in Supabase Auth session. Everything else is public.
 const PROTECTED_TABS = ['bp', 'budget', 'tracker'];
@@ -1001,12 +1014,23 @@ function bucketByDate(rows) {
   return byDate;
 }
 
-// Map of date -> goal actually in effect that day. Days with no entry fall back to DEFAULT_ML_GOAL.
+// Returns a function date -> goal in effect that day: the most recent logged goal on or before
+// that date (carried forward through days the app wasn't opened). Dates before the first
+// logged goal use DEFAULT_ML_GOAL. With sinceDate, also fetches the one entry just before it
+// so the first day in the range carries forward correctly.
 async function loadGoalMap(sinceDate) {
-  const rows = await fetchAll(`mmx_baby_goal_log?${sinceDate ? `date=gte.${sinceDate}&` : ''}order=date.asc`);
-  const map = {};
-  rows.forEach(r => { map[r.date] = r.ml_goal; });
-  return d => (map[d] != null ? map[d] : DEFAULT_ML_GOAL);
+  const q = sinceDate
+    ? Promise.all([
+        fetchAll(`mmx_baby_goal_log?date=gte.${sinceDate}&order=date.asc`),
+        sbFetch(`mmx_baby_goal_log?date=lt.${sinceDate}&order=date.desc&limit=1`)
+      ]).then(([inRange, before]) => (before || []).concat(inRange))
+    : fetchAll('mmx_baby_goal_log?order=date.asc');
+  const entries = (await q).filter(r => r.ml_goal != null).sort((a, b) => a.date < b.date ? -1 : 1);
+  return d => {
+    let goal = DEFAULT_ML_GOAL;
+    for (const e of entries) { if (e.date <= d) goal = e.ml_goal; else break; }
+    return goal;
+  };
 }
 
 // Called every poll and when the app returns to the foreground. If the calendar day
@@ -1055,17 +1079,28 @@ async function loadD3() {
   } catch (err) { console.error('loadD3 failed:', err); }
 }
 
+async function setD3(val) {
+  await upsertByDate('mmx_baby_d3', todayDateStr(), { d3:val });
+  d3Today = val;
+  getEl('d3-btn').classList.toggle('on', d3Today);
+  vibrate();
+}
+
+// One tap toggles; the toast offers Undo for a few seconds instead of a confirm popup.
 async function toggleD3() {
-  const date = todayDateStr();
-  const newVal = !d3Today;
-  const msg = newVal ? 'Mark D3 as given today?' : 'Unmark D3 for today?';
-  if (!confirm(msg)) return;
-  try {
-    await upsertByDate('mmx_baby_d3', date, { d3:newVal });
-    d3Today = newVal;
-    getEl('d3-btn').classList.toggle('on', d3Today);
-    vibrate();
-  } catch (err) { showToast('Could not update D3'); }
+  await guarded(async () => {
+    const prev = d3Today, next = !prev;
+    try {
+      await setD3(next);
+      showToast(next ? 'D3 marked as given' : 'D3 unmarked', {
+        label: 'Undo',
+        fn: () => guarded(async () => {
+          try { await setD3(prev); showToast('Undone'); }
+          catch (err) { showToast('Could not undo D3'); }
+        })
+      });
+    } catch (err) { showToast('Could not update D3'); }
+  });
 }
 
 // ── Feeding modal ──
@@ -1707,10 +1742,7 @@ async function init() {
   await initAuth();
   lastSeenDate = todayDateStr();
   updateBabyHeader();
-  loadNote();
-  loadBabyLog2();
-  loadD3();
-  loadMlGoal();
+  loadMlGoal(); // also logs today's goal, even when landing on another tab
 
   // Resolve which tab to land on: saved return-tab (after an update reload) takes
   // priority, otherwise the default 'baby' tab — falling back to the first visible
@@ -1724,11 +1756,20 @@ async function init() {
   switchTab(target);
 }
 
-setInterval(() => { checkDayRollover(); loadBabyLog2(); }, 30000);
-// Timers are throttled while the PWA is backgrounded, so also check as soon as it returns.
-document.addEventListener('visibilitychange', () => { if (!document.hidden) checkDayRollover(); });
-setInterval(loadD3, 30000);
-setInterval(loadNote, 30000);
+// Everything on the Baby tab that can change from another phone.
+function refreshBaby() {
+  checkDayRollover();
+  loadBabyLog2();
+  loadD3();
+  loadNote();
+}
+// Poll only while the app is visible AND the Baby tab is showing. Switching back to the tab
+// (LOAD_FNS.baby) or returning to the app refreshes immediately, so nothing looks stale.
+setInterval(() => { if (!document.hidden && activeTab === 'baby') refreshBaby(); }, 30000);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  if (activeTab === 'baby') refreshBaby(); else checkDayRollover();
+});
 init();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
