@@ -1,6 +1,6 @@
 // Cache name is tied to the app version — bump this with every build so
 // devices automatically drop the old cache and fetch fresh files.
-const CACHE = 'murdough-matrix-v3.9';
+const CACHE = 'murdough-matrix-v3.10';
 const ASSETS = ['/murdough-matrix/', '/murdough-matrix/index.html', '/murdough-matrix/manifest.json'];
 // Excel export library (CDN). Cached so the export works offline; best-effort so a CDN
 // hiccup can never block a service-worker install.
@@ -26,12 +26,8 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Periodic background update check — every hour, ask the browser to check
-// whether a new sw.js has been deployed. If found, the new worker installs
-// silently and takes over on the next page load (no user action needed).
-self.addEventListener('activate', () => {
-  setInterval(() => self.registration.update(), 60 * 60 * 1000);
-});
+// (Update checks are driven from the page — see index.html — because a timer in here dies
+// whenever the browser stops the idle worker.)
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;

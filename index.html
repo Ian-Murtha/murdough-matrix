@@ -198,17 +198,12 @@
     .precip-hour .ph-val  { font-family: var(--mono); font-size: 14px; color: var(--blue); }
     .weather-updated { font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: right; margin-bottom: 1rem; }
     .weather-error { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: center; padding: 1.5rem 0; }
-    .forecast-period { display: flex; align-items: baseline; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-    .forecast-period:last-child { border-bottom: none; }
     .forecast-day-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--border); }
     .forecast-day-row:last-child { border-bottom: none; }
     .forecast-cell { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 10px; }
     .forecast-cell .fc-label { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 2px; }
     .forecast-cell .fc-temp  { font-family: var(--mono); font-size: 14px; color: var(--text); font-weight: 600; }
     .forecast-cell .fc-desc  { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
-    .forecast-name { font-family: var(--mono); font-size: 11px; color: var(--accent); width: 90px; flex-shrink: 0; }
-    .forecast-info { font-size: 12px; color: var(--muted); }
-    .forecast-info strong { color: var(--text); font-weight: 500; }
 
     /* Settings */
     .status-row { display: flex; align-items: center; justify-content: space-between; }
@@ -375,7 +370,10 @@
   <!-- ══ WEATHER TAB ══ -->
   <div class="panel" id="panel-weather">
     <div class="card">
-      <p class="section-label">Philadelphia, PA — 19145</p>
+      <div class="log-header">
+        <p class="section-label" id="wx-location-label" style="margin:0">Philadelphia, PA — 19145</p>
+        <button class="refresh-btn" id="wx-refresh" onclick="loadWeather({force:true})">&#8635;</button>
+      </div>
       <div id="weather-content"><div class="weather-error">Loading weather…</div></div>
     </div>
   </div>
@@ -422,6 +420,17 @@
       <button class="update-btn" onclick="doLogout()">Log out</button>
     </div>
 
+    <!-- Weather location — per device, public -->
+    <div class="card">
+      <p class="section-label">Weather location (this device)</p>
+      <div class="status-row" style="gap:8px">
+        <input type="text" id="wx-zip-input" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="ZIP code" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--mono);font-size:14px;padding:9px 10px">
+        <button class="update-btn" id="wx-save-btn" style="width:auto;padding:9px 16px" onclick="saveWxLocation()">Save</button>
+      </div>
+      <div class="version-display" id="wx-loc-status" style="text-align:left"></div>
+      <button class="update-btn" id="wx-reset-btn" style="margin-top:0.25rem" onclick="resetWxLocation()">Reset to Philadelphia, PA</button>
+    </div>
+
     <!-- Protected settings content — shown only when logged in -->
     <div id="settings-protected-content" style="display:none">
       <div class="card">
@@ -439,7 +448,7 @@
 
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.9</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.10</div>
     </div>
   </div>
 
@@ -498,10 +507,6 @@ const SB_URL         = 'https://bwazurshtrpqzatmkdkj.supabase.co';
 const SB_KEY         = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YXp1cnNodHJwcXphdG1rZGtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MjMwMTMsImV4cCI6MjA5NTQ5OTAxM30.GLp4TEQ8geyczhNXzH8ZX3QcnAq32GntTgitXWcagdY';
 const BUCKET         = 'media';
 const STREAM_CH      = 'webrtc-stream';
-// WX_LAT/WX_LON must match the location label hardcoded in the Weather tab HTML.
-// Update both the constants here and the <p class="section-label"> in panel-weather if the location changes.
-const WX_LAT         = 39.9106;
-const WX_LON         = -75.1802;
 const MAX_STORAGE_MB = 2048;
 
 // ── Global state ─────────────────────────────────────────────
@@ -625,7 +630,7 @@ function showToast(msg, action) {
 // ── Tab order & drag-reorder ──────────────────────────────────
 const DEFAULT_TAB_ORDER = ['baby','bp','media','commbadge','tracker','budget','weather','settings'];
 const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', commbadge:'Video', tracker:'Tracker', budget:'Budget', weather:'Weather', settings:'Settings' };
-const LOAD_FNS   = { baby: () => refreshBaby(), weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => { if (!ensureFrameLoaded('commbadge-frame', syncCommBadgeSettings)) syncCommBadgeSettings(); }, tracker: () => ensureFrameLoaded('tracker-frame'), budget: () => ensureFrameLoaded('budget-frame'), settings: () => { renderSettingsAuthState(); renderTabVisibilityList(); getEl('ml-goal-input').value = mlGoal; } };
+const LOAD_FNS   = { baby: () => refreshBaby(), weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => { if (!ensureFrameLoaded('commbadge-frame', syncCommBadgeSettings)) syncCommBadgeSettings(); }, tracker: () => ensureFrameLoaded('tracker-frame'), budget: () => ensureFrameLoaded('budget-frame'), settings: () => { renderSettingsAuthState(); renderWxSettings(); renderTabVisibilityList(); getEl('ml-goal-input').value = mlGoal; } };
 
 // Tabs that require a logged-in Supabase Auth session. Everything else is public.
 const PROTECTED_TABS = ['bp', 'budget', 'tracker'];
@@ -1415,106 +1420,277 @@ function openLightbox(url, isVideo) {
 function closeLightbox() { getEl('lightbox').classList.remove('open'); getEl('lightbox-content').innerHTML=''; }
 
 // ── Weather ──────────────────────────────────────────────────
-async function loadWeather() {
-  getEl('weather-content').innerHTML='<div class="weather-error">Loading weather…</div>';
+// The location is a per-device setting (Settings → Weather location, saved in localStorage).
+// The NWS grid URLs and nearest station IDs are cached with it, since they only change if the
+// location does. The last good result is cached too, so the tab paints instantly and still
+// shows something (clearly labelled) when NWS is slow or the phone is offline.
+const WX_DEFAULT_LOC  = { zip:'19145', lat:39.9106, lon:-75.1802, label:'Philadelphia, PA — 19145' };
+const WX_LOC_KEY      = 'mmx_wx_location';
+const WX_CACHE_KEY    = 'mmx_wx_cache';
+const WX_USE_CACHE_MS = 12 * 60 * 60 * 1000;   // don't show a cached result older than this
+let wxLoc  = readWxLoc();
+let wxSeq  = 0;       // bumped per load; a superseded load discards its result
+let wxBusy = false;
+
+const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cToF    = c => Math.round(c * 9 / 5 + 32);
+
+function readWxLoc() {
   try {
-    const pointData = await (await fetch(`https://api.weather.gov/points/${WX_LAT},${WX_LON}`)).json();
-    const { forecastHourly, forecast, observationStations } = pointData.properties;
-    const [fcData, hrData] = await Promise.all([
-      fetch(forecast).then(r=>r.json()),
-      fetch(forecastHourly).then(r=>r.json())
-    ]);
-    const periods = fcData.properties.periods;
-    const hourly  = hrData.properties.periods;
-    const current = hourly[0];
+    const o = JSON.parse(localStorage.getItem(WX_LOC_KEY) || 'null');
+    if (o && Number.isFinite(o.lat) && Number.isFinite(o.lon) && typeof o.label === 'string') return o;
+  } catch (e) {}
+  return { ...WX_DEFAULT_LOC };
+}
+function saveWxLoc() { try { localStorage.setItem(WX_LOC_KEY, JSON.stringify(wxLoc)); } catch (e) {} }
+const wxLocKey = () => wxLoc.lat.toFixed(4) + ',' + wxLoc.lon.toFixed(4);
+function readWxCache() {
+  try {
+    const c = JSON.parse(localStorage.getItem(WX_CACHE_KEY) || 'null');
+    if (c && c.key === wxLocKey() && c.data && Date.now() - c.fetchedAt < WX_USE_CACHE_MS) return c;
+  } catch (e) {}
+  return null;
+}
+function writeWxCache(data) {
+  try { localStorage.setItem(WX_CACHE_KEY, JSON.stringify({ key: wxLocKey(), fetchedAt: Date.now(), data })); } catch (e) {}
+}
 
-    // Prefer live observation station data for Current Temp and Dew Point over hourly forecast values.
-    let tempF    = current.temperature;
-    let dewPoint = '—';
-    try {
-      const stData  = await (await fetch(observationStations)).json();
-      const obsData = await (await fetch(stData.features[0].id+'/observations/latest')).json();
-      const obs     = obsData.properties;
-      if (obs?.temperature?.value != null) tempF = Math.round(obs.temperature.value*9/5+32);
-      if (obs?.dewpoint?.value    != null) dewPoint = Math.round(obs.dewpoint.value*9/5+32)+'°F';
-    } catch (e) {
-      console.error('Observation station fetch failed, falling back to hourly forecast:', e);
-      if (current.dewpoint?.value != null) dewPoint = Math.round(current.dewpoint.value*9/5+32)+'°F';
-    }
+// fetch → JSON with a timeout and an HTTP status check (NWS returns JSON error bodies on 5xx).
+async function wxJson(url, ms = 10000) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try {
+    const res = await fetch(url, { signal: ctl.signal });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' for ' + url);
+    return await res.json();
+  } finally { clearTimeout(t); }
+}
 
-    // Today's High and Tonight's Low come from the NWS forecast periods (predicted values for the day),
-    // not from real-time hourly accounting. periods[0] = daytime "Today", periods[1] = "Tonight".
-    // After ~6pm the NWS drops the "Today" period — fall back to the cached value from localStorage
-    // so Today's High always reflects what was predicted for today, not tonight's temperature.
-    const todayPeriod   = periods.find(p => p.isDaytime  && p.name === 'Today');
-    const tonightPeriod = periods.find(p => !p.isDaytime && p.name === 'Tonight') || periods.find(p => !p.isDaytime);
-    const lowTemp  = tonightPeriod ? tonightPeriod.temperature+'°F' : '—';
-
-    // Store Today's High in Supabase for persistence across devices and page reloads.
-    // Only update if NWS has a current "Today" daytime period — otherwise use cached value,
-    // but only if it's from today and higher than the current temperature (guards against stale lows).
-    let highTemp = '—';
-    if (todayPeriod) {
-      highTemp = todayPeriod.temperature + '°F';
-      try {
-        const rows = await sbFetch('mmx_weather?order=id.asc&limit=1');
-        if (rows && rows.length) {
-          await sbFetch(`mmx_weather?id=eq.${rows[0].id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({ today_high: todayPeriod.temperature, date: new Date().toISOString().slice(0,10) }) });
-        }
-      } catch(e) { console.error('mmx_weather write failed:', e); }
-    } else {
-      try {
-        const rows = await sbFetch('mmx_weather?order=id.asc&limit=1');
-        if (rows && rows.length) {
-          const cached = rows[0];
-          const isToday = cached.date === new Date().toISOString().slice(0,10);
-          const cachedHigher = cached.today_high != null && cached.today_high >= tempF;
-          if (isToday && cachedHigher) highTemp = cached.today_high + '°F';
-        }
-      } catch(e) { console.error('mmx_weather read failed:', e); }
-    }
-
-    const next6 = hourly.slice(0,6).map(h => ({
-      time:   fmt12time(h.startTime.slice(0,19).replace('T',' ')),
-      precip: h.probabilityOfPrecipitation?.value ?? 0
-    }));
-
-    // Pair forecast periods into day+night rows
-    const dayPairs = [];
-    for (let i = 0; i < periods.length - 1; i += 2) {
-      dayPairs.push([periods[i], periods[i+1]]);
-    }
-    if (periods.length % 2 !== 0) dayPairs.push([periods[periods.length-1], null]);
-
-    getEl('weather-content').innerHTML = `
-      <div class="weather-grid">
-        <div class="weather-cell"><div class="w-val">${tempF}°F</div><div class="w-lbl">Current Temp</div></div>
-        <div class="weather-cell"><div class="w-val">${dewPoint}</div><div class="w-lbl">Dew Point</div></div>
-        <div class="weather-cell"><div class="w-val">${highTemp}</div><div class="w-lbl">Today's High</div></div>
-        <div class="weather-cell"><div class="w-val">${lowTemp}</div><div class="w-lbl">Tonight's Low</div></div>
-      </div>
-      <p class="section-label" style="margin-bottom:0.5rem">Precip chance — next 6 hours</p>
-      <div class="precip-hours">
-        ${next6.map(h=>`<div class="precip-hour"><div class="ph-time">${h.time}</div><div class="ph-val">${h.precip}%</div></div>`).join('')}
-      </div>
-      <div class="weather-updated">Updated ${fmt12time(current.startTime.slice(0,19).replace('T',' '))}</div>
-      <p class="section-label" style="margin-bottom:0.25rem">7-day forecast</p>
-      ${dayPairs.map(([day, night]) => `
-        <div class="forecast-day-row">
-          <div class="forecast-cell">
-            <div class="fc-label">${day.name}</div>
-            <div class="fc-temp">${day.temperature}°F</div>
-            <div class="fc-desc">${day.shortForecast}<!-- trusted NWS source; not escaped. Do not use this pattern with untrusted data. --></div>
-          </div>
-          ${night ? `<div class="forecast-cell">
-            <div class="fc-label">${night.name}</div>
-            <div class="fc-temp">${night.temperature}°F</div>
-            <div class="fc-desc">${night.shortForecast}</div>
-          </div>` : '<div></div>'}
-        </div>`).join('')}`;
-  } catch (err) {
-    getEl('weather-content').innerHTML='<div class="weather-error">Could not load weather.<br>Check connection and try again.</div>';
+async function wxFetchGrid(lat, lon) {
+  const p = (await wxJson(`https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`)).properties;
+  if (!p?.forecast || !p?.forecastHourly || !p?.observationStations) throw new Error('HTTP 404 no NWS grid');
+  return { forecast: p.forecast, forecastHourly: p.forecastHourly, stationsUrl: p.observationStations, stationIds: null };
+}
+async function wxGetGrid(loc) {
+  if (!loc.grid) { loc.grid = await wxFetchGrid(loc.lat, loc.lon); if (loc === wxLoc) saveWxLoc(); }
+  return loc.grid;
+}
+async function wxGetStations(loc) {
+  const grid = await wxGetGrid(loc);
+  if (!grid.stationIds || !grid.stationIds.length) {
+    const st = await wxJson(grid.stationsUrl);
+    grid.stationIds = (st.features || []).slice(0, 3).map(f => f.id);
+    if (grid.stationIds.length && loc === wxLoc) saveWxLoc();
   }
+  return grid.stationIds;
+}
+
+// Nearest station with a fresh (< 3h) temperature reading wins; the next station is tried if
+// one is offline or stale. Also returns the highest reading since local midnight.
+async function wxObservations(stationIds, startIso) {
+  for (const id of stationIds) {
+    try {
+      const [latest, list] = await Promise.all([
+        wxJson(id + '/observations/latest'),
+        wxJson(id + '/observations?limit=100&start=' + encodeURIComponent(startIso)).catch(() => null)
+      ]);
+      const o = latest?.properties;
+      const t = o?.temperature?.value;
+      const age = Date.now() - Date.parse(o?.timestamp);
+      if (t == null || !(age < 3 * 60 * 60 * 1000)) continue;   // missing or stale (NaN fails too)
+      let maxC = t;
+      for (const f of (list?.features || [])) {
+        const v = f.properties?.temperature?.value;
+        if (v != null && v > maxC) maxC = v;
+      }
+      return { tempC: t, dewC: o.dewpoint?.value ?? null, maxC };
+    } catch (e) { console.error('Observation fetch failed for', id, e); }
+  }
+  return null;
+}
+
+// "2026-10-26T15:00:00-04:00" → { str:'-04:00', min:-240 }
+function wxOffsetOf(ts) {
+  const m = /([+-])(\d\d):(\d\d)$/.exec(ts);
+  if (!m) return { str: 'Z', min: 0 };
+  return { str: m[0], min: (m[1] === '-' ? -1 : 1) * (+m[2] * 60 + +m[3]) };
+}
+
+// Fetch everything and reduce it to the small, render-ready object that is also cached.
+async function wxBuild() {
+  const loc = wxLoc;
+  let hadCachedGrid = !!loc.grid;
+  let grid = await wxGetGrid(loc);
+  let fcData, hrData;
+  try {
+    [fcData, hrData] = await Promise.all([wxJson(grid.forecast), wxJson(grid.forecastHourly)]);
+  } catch (e) {
+    // Cached grid URLs can go stale if NWS remaps the grid: refetch them once and retry.
+    if (!hadCachedGrid || !/^HTTP 4/.test(e.message)) throw e;
+    loc.grid = null;
+    grid = await wxGetGrid(loc);
+    [fcData, hrData] = await Promise.all([wxJson(grid.forecast), wxJson(grid.forecastHourly)]);
+  }
+  const periods = fcData.properties?.periods;
+  const hourly  = hrData.properties?.periods;
+  if (!periods?.length || !hourly?.length) throw new Error('Empty forecast');
+  const current = hourly[0];
+
+  // "Today" means today at the forecast location, not on this device: derive the location's
+  // wall-clock time from the UTC offset NWS attaches to its timestamps.
+  const off    = wxOffsetOf(current.startTime);
+  const locNow = new Date(Date.now() + off.min * 60000).toISOString();   // wall-clock digits at the location
+  const today  = locNow.slice(0, 10);
+
+  const stationIds = await wxGetStations(loc).catch(e => { console.error('Station list failed:', e); return []; });
+  const obs = stationIds.length ? await wxObservations(stationIds, today + 'T00:00:00' + off.str) : null;
+
+  // Current Temp / Dew Point: live station data, falling back to the hourly forecast per value.
+  let tempF = current.temperature;
+  let dewPoint = '—';
+  if (obs) {
+    tempF = cToF(obs.tempC);
+    if (obs.dewC != null) dewPoint = cToF(obs.dewC) + '°F';
+  }
+  if (dewPoint === '—' && current.dewpoint?.value != null) dewPoint = cToF(current.dewpoint.value) + '°F';
+
+  // Today's High: the forecast high from the first daytime period that starts today (matched by
+  // date, not by name, since NWS calls it "Today" or "This Afternoon" depending on the hour).
+  // NWS drops that period in the evening; then the highest station reading since local midnight
+  // is used. If both exist, the larger wins, so the tile never shows less than has been observed.
+  const todayDay = periods.find(p => p.isDaytime && p.startTime.slice(0, 10) === today);
+  const fcHigh   = todayDay ? todayDay.temperature : null;
+  const obsHigh  = obs ? cToF(obs.maxC) : null;
+  const highVal  = (fcHigh != null && obsHigh != null) ? Math.max(fcHigh, obsHigh) : (fcHigh ?? obsHigh);
+  const nightP   = periods.find(p => !p.isDaytime);
+
+  // Day/night pairs for the forecast list; a leading night period gets an empty day cell.
+  const slim = p => ({ name: p.name, temperature: p.temperature, shortForecast: p.shortForecast });
+  const rows = [];
+  for (let i = 0; i < periods.length;) {
+    const p = periods[i];
+    if (p.isDaytime) {
+      const n = periods[i + 1];
+      if (n && !n.isDaytime) { rows.push([slim(p), slim(n)]); i += 2; }
+      else { rows.push([slim(p), null]); i += 1; }
+    } else { rows.push([null, slim(p)]); i += 1; }
+  }
+
+  return {
+    tempF,
+    dewPoint,
+    high: highVal != null ? highVal + '°F' : '—',
+    low:  nightP ? nightP.temperature + '°F' : '—',
+    next6: hourly.slice(0, 6).map(h => {
+      const v = h.probabilityOfPrecipitation?.value;
+      return { time: fmt12time(h.startTime.slice(0, 19).replace('T', ' ')), precip: v == null ? '—' : v + '%' };
+    }),
+    rows,
+    updated: fmt12time(today + ' ' + locNow.slice(11, 19))   // fetch time, at the location
+  };
+}
+
+function renderWeather(d, note) {
+  const cell = p => p
+    ? `<div class="forecast-cell"><div class="fc-label">${escHtml(p.name)}</div><div class="fc-temp">${escHtml(p.temperature)}°F</div><div class="fc-desc">${escHtml(p.shortForecast)}</div></div>`
+    : '<div></div>';
+  getEl('weather-content').innerHTML = `
+    <div class="weather-grid">
+      <div class="weather-cell"><div class="w-val">${escHtml(d.tempF)}°F</div><div class="w-lbl">Current Temp</div></div>
+      <div class="weather-cell"><div class="w-val">${escHtml(d.dewPoint)}</div><div class="w-lbl">Dew Point</div></div>
+      <div class="weather-cell"><div class="w-val">${escHtml(d.high)}</div><div class="w-lbl">Today's High</div></div>
+      <div class="weather-cell"><div class="w-val">${escHtml(d.low)}</div><div class="w-lbl">Tonight's Low</div></div>
+    </div>
+    <p class="section-label" style="margin-bottom:0.5rem">Precip chance — next 6 hours</p>
+    <div class="precip-hours">
+      ${d.next6.map(h => `<div class="precip-hour"><div class="ph-time">${escHtml(h.time)}</div><div class="ph-val">${escHtml(h.precip)}</div></div>`).join('')}
+    </div>
+    <div class="weather-updated">${note ? escHtml(note) : 'Updated ' + escHtml(d.updated)}</div>
+    <p class="section-label" style="margin-bottom:0.25rem">7-day forecast</p>
+    ${d.rows.map(([day, night]) => `<div class="forecast-day-row">${cell(day)}${cell(night)}</div>`).join('')}`;
+}
+
+// opts.force: ↻ button, always refetch. opts.auto: timer / return-to-app, refetch only if the data
+// is over 15 min old. Plain call (tab switch): refetch if over 2 min old. Cached data is shown
+// immediately in every case.
+async function loadWeather(opts = {}) {
+  if (opts.auto && wxBusy) return;
+  const seq = ++wxSeq;
+  wxBusy = true;
+  const btn = getEl('wx-refresh');
+  btn.disabled = true;
+  getEl('wx-location-label').textContent = wxLoc.label;
+  const el     = getEl('weather-content');
+  const cached = readWxCache();
+  const maxAge = opts.force ? 0 : opts.auto ? 15 * 60000 : 2 * 60000;
+  const fresh  = cached && Date.now() - cached.fetchedAt < maxAge;
+  if (cached) renderWeather(cached.data, fresh ? null : `Showing data from ${cached.data.updated} — refreshing…`);
+  else el.innerHTML = '<div class="weather-error">Loading weather…</div>';
+  if (fresh) { wxBusy = false; btn.disabled = false; return; }
+  try {
+    const data = await wxBuild();
+    if (seq !== wxSeq) return;
+    writeWxCache(data);
+    renderWeather(data);
+  } catch (err) {
+    if (seq !== wxSeq) return;
+    console.error('Weather load failed:', err);
+    if (cached) renderWeather(cached.data, `Couldn't refresh — showing data from ${cached.data.updated}`);
+    else el.innerHTML = '<div class="weather-error">Could not load weather.<br>Check connection and tap ↻ to retry.</div>';
+  } finally {
+    if (seq === wxSeq) { wxBusy = false; btn.disabled = false; }
+  }
+}
+
+// ── Weather location setting ─────────────────────────────────
+function renderWxSettings() {
+  getEl('wx-loc-status').textContent = 'Current: ' + wxLoc.label;
+  getEl('wx-zip-input').placeholder  = wxLoc.zip || 'ZIP code';
+  getEl('wx-reset-btn').disabled     = wxLoc.zip === WX_DEFAULT_LOC.zip;
+}
+async function wxZipLookup(zip) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 10000);
+  try {
+    const res = await fetch('https://api.zippopotam.us/us/' + zip, { signal: ctl.signal });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const pl  = (await res.json()).places?.[0];
+    const lat = Number(pl?.latitude), lon = Number(pl?.longitude);
+    if (!pl || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    return { zip, lat, lon, label: `${pl['place name']}, ${pl['state abbreviation']} — ${zip}` };
+  } finally { clearTimeout(t); }
+}
+async function saveWxLocation() {
+  const zip = getEl('wx-zip-input').value.trim();
+  if (!/^\d{5}$/.test(zip)) { showToast('Enter a 5-digit US ZIP code'); return; }
+  const btn = getEl('wx-save-btn');
+  btn.disabled = true;
+  try {
+    const loc = await wxZipLookup(zip);
+    if (!loc) { showToast('ZIP code not found'); return; }
+    try { loc.grid = await wxFetchGrid(loc.lat, loc.lon); }
+    catch (e) {
+      console.error(e);
+      showToast(/^HTTP 404/.test(e.message) ? 'NWS has no forecast for that ZIP' : 'Could not reach NWS — try again');
+      return;
+    }
+    wxLoc = loc;
+    saveWxLoc();
+    try { localStorage.removeItem(WX_CACHE_KEY); } catch (e) {}
+    getEl('wx-zip-input').value = '';
+    renderWxSettings();
+    showToast('Weather location saved');
+  } catch (e) {
+    console.error(e);
+    showToast('Could not look up ZIP — check connection');
+  } finally { btn.disabled = false; }
+}
+function resetWxLocation() {
+  wxLoc = { ...WX_DEFAULT_LOC };
+  try { localStorage.removeItem(WX_LOC_KEY); localStorage.removeItem(WX_CACHE_KEY); } catch (e) {}
+  renderWxSettings();
+  showToast('Weather location reset');
 }
 
 // ── Update ────────────────────────────────────────────────────
@@ -1769,9 +1945,21 @@ setInterval(() => { if (!document.hidden && activeTab === 'baby') refreshBaby();
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
   if (activeTab === 'baby') refreshBaby(); else checkDayRollover();
+  if (activeTab === 'weather') loadWeather({ auto: true });
+  if (swReg) swReg.update().catch(() => {});
 });
+// Weather: while the app sits open on the Weather tab, refresh once the data is over 15 min old.
+setInterval(() => { if (!document.hidden && activeTab === 'weather') loadWeather({ auto: true }); }, 60000);
 init();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+// Ask the browser to check for a new sw.js hourly and whenever the app returns to the foreground
+// (a timer inside the worker itself dies when the browser stops the idle worker).
+let swReg = null;
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    swReg = reg;
+    setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+  }).catch(()=>{});
+}
 </script>
 </body>
 </html>
