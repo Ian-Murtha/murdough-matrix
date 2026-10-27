@@ -1,6 +1,6 @@
 // Cache name is tied to the app version — bump this with every build so
 // devices automatically drop the old cache and fetch fresh files.
-const CACHE = 'murdough-matrix-v3.10';
+const CACHE = 'murdough-matrix-v3.11';
 const ASSETS = ['/murdough-matrix/', '/murdough-matrix/index.html', '/murdough-matrix/manifest.json'];
 // Excel export library (CDN). Cached so the export works offline; best-effort so a CDN
 // hiccup can never block a service-worker install.
