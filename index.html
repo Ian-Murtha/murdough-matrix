@@ -456,7 +456,7 @@
 
     <div class="card" style="text-align:center">
       <button class="update-btn" onclick="checkForUpdate()">&#8635; Check for update</button>
-      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.11</div>
+      <div class="version-display" style="margin-top:0.75rem">The MurDough Matrix v3.11.1</div>
     </div>
   </div>
 
@@ -522,7 +522,8 @@ const SB_URL         = 'https://bwazurshtrpqzatmkdkj.supabase.co';
 const SB_KEY         = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YXp1cnNodHJwcXphdG1rZGtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MjMwMTMsImV4cCI6MjA5NTQ5OTAxM30.GLp4TEQ8geyczhNXzH8ZX3QcnAq32GntTgitXWcagdY';
 const BUCKET         = 'media';
 const STREAM_CH      = 'webrtc-stream';
-const MAX_STORAGE_MB = 2048;
+const MAX_STORAGE_MB = 1024;   // Supabase Free plan: 1 GB total storage (project-wide). Raise if the plan changes.
+const MAX_FILE_MB    = 50;     // Supabase Free plan: global upload limit per file, cannot be raised on Free.
 
 // ── Global state ─────────────────────────────────────────────
 let supabaseClient = null;
@@ -1359,6 +1360,7 @@ const MEDIA_PAGE = 60;      // tiles per "Load more"
 const THUMB_PX   = 480;     // longest side of a thumbnail
 const SIGN_TTL   = 3600;    // seconds a signed link stays valid
 const MEDIA_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let mediaUsedBytes = 0;     // bytes in the bucket (originals + thumbnails), from the last list
 let mediaAll = [];          // every original, newest first
 let mediaThumbSet = new Set();
 let mediaShown = 0, mediaRendered = 0;
@@ -1386,7 +1388,7 @@ function friendlyStorageError(status, text) {
   let j = {}; try { j = JSON.parse(text); } catch (e) {}
   const code = Number(j.statusCode || status) || 0;
   const msg  = String(j.message || j.error || '');
-  if (code === 413) return 'File is too large for the storage limit';
+  if (code === 413) return `File is too large (limit is ${MAX_FILE_MB} MB per file)`;
   if (code === 401 || code === 403) return 'Not allowed — please log in again';
   if (/mime/i.test(msg)) return 'That file type is not allowed';
   if (code === 409) return 'A file with that name already exists';
@@ -1441,6 +1443,7 @@ async function loadMedia(force) {
     orig.sort((a, b) => (mediaStamp(b.name) - mediaStamp(a.name)) || String(b.created_at).localeCompare(String(a.created_at)));
     const totalBytes = [...orig, ...thumbs].reduce((s, f) => s + (f.metadata?.size || 0), 0);
     const sig = orig.map(f => f.name).join('|') + '#' + thumbs.map(f => f.name).join('|');
+    mediaUsedBytes = totalBytes;
     updateStorageBar(totalBytes);
     const fresh = Date.now() - mediaLoadedAt < 30 * 60 * 1000;
     if (!force && hasTiles && sig === mediaSig && fresh) return; // nothing changed; leave the grid alone
@@ -1582,8 +1585,11 @@ async function makeThumb(file, mime) {
 async function uploadOne(file, onPct) {
   const mime = fileMime(file);
   if (!/^(image|video)\//.test(mime)) throw Object.assign(new Error('Not a photo or video'), { friendly:true });
+  if (file.size > MAX_FILE_MB * 1048576) throw Object.assign(new Error(`Too large: ${(file.size / 1048576).toFixed(0)} MB (limit is ${MAX_FILE_MB} MB per file)`), { friendly:true });
+  if (mediaUsedBytes + file.size > MAX_STORAGE_MB * 1048576) throw Object.assign(new Error('Not enough storage left — delete something first'), { friendly:true });
   const base = captureStamp(file) + '_' + Math.random().toString(36).slice(2, 8);
   await putObject(`${base}.${storedExt(file, mime)}`, file, mime, onPct);
+  mediaUsedBytes += file.size; // keeps the free-space check right across a multi-file batch
   try { // thumbnail is best-effort: without one the gallery just uses the original
     const blob = await makeThumb(file, mime);
     if (blob) await putObject(`thumbs/${base}.jpg`, blob, 'image/jpeg');
