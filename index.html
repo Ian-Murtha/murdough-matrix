@@ -40,7 +40,6 @@
     .tabs { display: flex; gap: 3px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 4px; overflow-x: auto; }
     .tab { flex: 1; min-width: 0; padding: 8px 2px; border: none; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; border-radius: 6px; transition: background 0.15s, color 0.15s; white-space: nowrap; }
     .tab.active { background: var(--surface2); color: var(--text); }
-    .tab.live-dot::after { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--danger); margin-left: 4px; vertical-align: middle; }
     .tab-hidden { display: none !important; }
 
     /* Monitor night mode */
@@ -150,18 +149,11 @@
     .bp-del:hover { color: var(--danger); border-color: var(--danger-border); }
     .chart-wrap { position: relative; height: 180px; }
 
-    /* Stream tab — shared with CommBadge */
-    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-    #stream-quality { margin-left: auto; font-size: 10px; font-family: var(--mono); color: var(--muted); }
-
-    /* Call buttons */
-    /* Stream quality sliders */
-    .quality-row { display: flex; align-items: center; gap: 10px; margin-bottom: 0.6rem; }
-    .quality-label { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 68px; flex-shrink: 0; text-align: right; letter-spacing: 0.05em; text-transform: uppercase; }
-    .quality-val { font-family: var(--mono); font-size: 11px; color: var(--accent); width: 72px; flex-shrink: 0; }
-    input[type="range"] { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; background: var(--surface2); border-radius: 999px; outline: none; border: 1px solid var(--border); cursor: pointer; }
-    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); cursor: pointer; }
-    input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); cursor: pointer; }
+    /* Video tab: panel fills the space left in main; frame takes the remaining height */
+    #panel-commbadge.active { flex: 1; min-height: 0; }
+    #commbadge-frame { flex: 1; min-height: 0; }
+    .video-notice { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); font-size: 13px; color: var(--muted); }
+    .video-notice[hidden] { display: none; }
 
     /* Media */
     .upload-area { border: 1.5px dashed var(--border2); border-radius: var(--r-sm); padding: 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
@@ -391,10 +383,14 @@
 
   <!-- ══ COMMBADGE TAB ══ -->
   <div class="panel" id="panel-commbadge" style="padding:0">
-    <iframe id="commbadge-frame"
+    <div id="commbadge-notice" class="video-notice" hidden>
+      <p>Video is unavailable. Check your connection.</p>
+      <button class="refresh-btn" id="commbadge-reload" type="button">Reload</button>
+    </div>
+    <iframe id="commbadge-frame" title="Video"
       data-src="https://ian-murtha.github.io/commbadge/?embed=1"
       allow="camera; microphone"
-      style="width:100%;height:calc(100dvh - 140px);border:0;border-radius:var(--r-sm);background:transparent">
+      style="width:100%;border:0;border-radius:var(--r-sm);background:transparent">
     </iframe>
   </div>
 
@@ -524,7 +520,7 @@
 
 <script>
 // ── Config ───────────────────────────────────────────────────
-const APP_VERSION    = 'v3.12';   // keep in step with CACHE in sw.js; shown in Settings and compared by the update check
+const APP_VERSION    = 'v3.13';   // keep in step with CACHE in sw.js; shown in Settings and compared by the update check
 const SB_URL         = 'https://bwazurshtrpqzatmkdkj.supabase.co';
 const SB_KEY         = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YXp1cnNodHJwcXphdG1rZGtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MjMwMTMsImV4cCI6MjA5NTQ5OTAxM30.GLp4TEQ8geyczhNXzH8ZX3QcnAq32GntTgitXWcagdY';
 const BUCKET         = 'media';
@@ -666,7 +662,7 @@ function showToast(msg, action) {
 // ── Tab order & visibility (managed in Settings) ──────────────
 const DEFAULT_TAB_ORDER = ['baby','bp','media','commbadge','tracker','budget','weather','settings'];
 const TAB_LABELS = { baby:'Baby', bp:'BP', media:'Media', commbadge:'Video', tracker:'Tracker', budget:'Budget', weather:'Weather', settings:'Settings' };
-const LOAD_FNS   = { baby: () => refreshBaby(), weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => { if (!ensureFrameLoaded('commbadge-frame', syncCommBadgeSettings)) syncCommBadgeSettings(); }, tracker: () => ensureFrameLoaded('tracker-frame'), budget: () => ensureFrameLoaded('budget-frame'), settings: () => loadSettings() };
+const LOAD_FNS   = { baby: () => refreshBaby(), weather: () => loadWeather(), bp: () => loadBP(), media: () => loadMedia(), commbadge: () => { if (!ensureFrameLoaded('commbadge-frame', syncCommBadgeSettings)) syncCommBadgeSettings(); watchVideoFrame(); }, tracker: () => ensureFrameLoaded('tracker-frame'), budget: () => ensureFrameLoaded('budget-frame'), settings: () => loadSettings() };
 
 // Tabs that require a logged-in Supabase Auth session. Everything else is public.
 const PROTECTED_TABS = ['bp', 'media', 'budget', 'tracker'];
@@ -697,6 +693,34 @@ function ensureFrameLoaded(id, onLoad) {
   frame.setAttribute('src', frame.dataset.src);
   return true;
 }
+
+// Video tab: an iframe gives no error event, so show a notice if CommBadge has not finished
+// loading after VIDEO_LOAD_TIMEOUT_MS or the device is offline. Hidden again on the frame's load.
+const VIDEO_LOAD_TIMEOUT_MS = 10000;
+let videoLoaded = false, videoTimer = null;
+function setVideoNotice(show) { const n = getEl('commbadge-notice'); if (n) n.hidden = !show; }
+function watchVideoFrame() {
+  const frame = getEl('commbadge-frame');
+  if (!frame || videoLoaded || !frame.getAttribute('src')) return;
+  if (!navigator.onLine) { setVideoNotice(true); return; }
+  if (videoTimer) return;
+  videoTimer = setTimeout(() => { videoTimer = null; if (!videoLoaded) setVideoNotice(true); }, VIDEO_LOAD_TIMEOUT_MS);
+}
+(function initVideoNotice() {
+  const frame = getEl('commbadge-frame');
+  if (!frame) return;
+  frame.addEventListener('load', () => {
+    if (!frame.getAttribute('src')) return;
+    if (!navigator.onLine) { setVideoNotice(true); return; }   // browsers fire load for their own offline error page
+    videoLoaded = true; clearTimeout(videoTimer); videoTimer = null; setVideoNotice(false);
+  });
+  window.addEventListener('offline', () => { if (!videoLoaded && frame.getAttribute('src')) setVideoNotice(true); });
+  getEl('commbadge-reload').addEventListener('click', () => {
+    videoLoaded = false; clearTimeout(videoTimer); videoTimer = null; setVideoNotice(false);
+    frame.setAttribute('src', frame.dataset.src);   // real re-request
+    watchVideoFrame();
+  });
+})();
 
 // On logout, drop anything the login-only embeds (Tracker, Budget) had loaded. Each frame is
 // swapped for a fresh copy with no src, which discards the loaded page and its history; the next
