@@ -22,7 +22,7 @@
     :root {
       --bg: #0f1117; --surface: #181b24; --surface2: #1f2330;
       --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
-      --text: #f0f0f0; --muted: #7a7f8e;
+      --text: #f0f0f0; --muted: #8d92a1;
       --accent: #a8f0c6; --accent-dim: rgba(168,240,198,0.12); --accent-border: rgba(168,240,198,0.3);
       --danger: #f0a8a8; --danger-dim: rgba(240,168,168,0.12); --danger-border: rgba(240,168,168,0.3);
       --warn: #f0d8a8; --warn-dim: rgba(240,216,168,0.12); --warn-border: rgba(240,216,168,0.3);
@@ -64,26 +64,16 @@
     .note-saving { font-family: var(--mono); font-size: 10px; color: var(--muted); flex-shrink: 0; }
     .last-events-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--muted); flex-wrap: wrap; }
     .last-events-row strong { color: var(--text); font-weight: 500; }
+    .feed-ago { color: var(--accent); }
+    .feed-ago.warn { color: var(--warn); }
     .baby-btn-row { display: flex; gap: 8px; margin-bottom: 0.6rem; }
     .baby-btn-row:last-child { margin-bottom: 0; }
-    .baby-action-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
     .baby-action-btn { flex: 1; padding: 13px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text); font-family: var(--mono); font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; -webkit-tap-highlight-color: transparent; }
     .baby-action-btn:active { transform: scale(0.98); }
     .baby-action-btn.on { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
-    .baby-ts-box { min-height: 34px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; }
-    .ts-entry { font-family: var(--mono); font-size: 12px; color: var(--text); cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: background 0.15s; }
-    .ts-entry:hover { background: var(--surface2); }
-    .feed-slider { position: relative; background: var(--surface2); border: 1px solid var(--border); border-radius: 999px; height: 40px; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
-    .feed-slider-track { position: absolute; inset: 3px; border-radius: 999px; }
-    .feed-slider-thumb { position: absolute; top: 3px; left: 3px; width: calc(50% - 3px); height: calc(100% - 6px); background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: 999px; transition: transform 0.2s; }
-    .feed-slider.formula .feed-slider-thumb { transform: translateX(100%); }
-    .feed-slider-labels { position: relative; display: flex; height: 100%; }
-    .feed-slider-labels span { flex: 1; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; color: var(--muted); z-index: 1; transition: color 0.2s; }
-    .feed-slider:not(.formula) .feed-slider-labels span:first-child { color: var(--accent); font-weight: 600; }
-    .feed-slider.formula .feed-slider-labels span:last-child { color: var(--accent); font-weight: 600; }
 
     /* Inputs */
-    input[type="text"], input[type="number"], input[type="datetime-local"] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text); font-family: var(--sans); font-size: 15px; padding: 10px 12px; outline: none; transition: border-color 0.15s; -webkit-appearance: none; }
+    input[type="text"], input[type="number"], input[type="datetime-local"] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text); font-family: var(--sans); font-size: 16px; padding: 10px 12px; outline: none; transition: border-color 0.15s; -webkit-appearance: none; }
     input[type="text"]:focus, input[type="number"]:focus, input[type="datetime-local"]:focus { border-color: var(--border2); }
     input[type="text"]::placeholder, input[type="number"]::placeholder { color: var(--muted); }
     input[type="datetime-local"] { color-scheme: dark; }
@@ -128,10 +118,8 @@
     .review-table th { text-align: left; color: var(--muted); font-weight: 500; padding: 4px 6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
     .review-table td { padding: 5px 6px; border-bottom: 1px solid var(--border); color: var(--text); white-space: nowrap; }
     .review-table tr:last-child td { border-bottom: none; }
-    .review-table .d3-yes { color: var(--accent); }
-    .review-table .d3-no  { color: var(--muted); }
-    .review-table .diff-pos { color: #2e9e4f; }
-    .review-table .diff-neg { color: #d6473c; }
+    .review-table .diff-pos { color: var(--green); }
+    .review-table .diff-neg { color: var(--danger); }
     .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .summary-cell { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 4px; text-align: center; }
     .summary-cell .num { font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--accent); }
@@ -142,10 +130,10 @@
     .bp-field label { display: block; font-size: 11px; font-family: var(--mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.4rem; }
     .bp-reading { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
     .bp-reading:last-child { border-bottom: none; }
-    .bp-time { font-family: var(--mono); font-size: 12px; color: var(--accent); flex-shrink: 0; width: 85px; }
+    .bp-time { font-family: var(--mono); font-size: 12px; color: var(--accent); flex-shrink: 0; white-space: nowrap; }
     .bp-values { font-family: var(--mono); font-size: 14px; color: var(--text); flex: 1; }
     .bp-values span { color: var(--muted); font-size: 11px; margin-left: 4px; }
-    .bp-del { background: transparent; border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--muted); cursor: pointer; font-size: 11px; font-family: var(--mono); padding: 3px 8px; transition: color 0.15s, border-color 0.15s; }
+    .bp-del { flex-shrink: 0; min-width: 40px; min-height: 40px; margin-left: 4px; background: transparent; border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--muted); cursor: pointer; font-size: 13px; font-family: var(--mono); padding: 3px 8px; transition: color 0.15s, border-color 0.15s; }
     .bp-del:hover { color: var(--danger); border-color: var(--danger-border); }
     .chart-wrap { position: relative; height: 180px; }
 
@@ -154,6 +142,10 @@
     #commbadge-frame { flex: 1; min-height: 0; }
     .video-notice { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); font-size: 13px; color: var(--muted); }
     .video-notice[hidden] { display: none; }
+
+    /* Tracker and Budget tabs: same pattern as Video */
+    #panel-tracker.active, #panel-budget.active { flex: 1; min-height: 0; }
+    #tracker-frame, #budget-frame { flex: 1; min-height: 0; }
 
     /* Media */
     .upload-area { border: 1.5px dashed var(--border2); border-radius: var(--r-sm); padding: 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
@@ -256,46 +248,27 @@
   <!-- ══ BABY TAB ══ -->
   <div class="panel active" id="panel-baby">
     <div class="card">
-      <div class="note-row">
+      <div class="baby-date-header" id="baby-date-header">—</div>
+      <div class="note-row" style="margin-top:0.75rem">
         <div class="note-text empty" id="note-display">No note yet</div>
         <textarea class="note-input" id="note-input" placeholder="Type a shared note…" rows="1" style="display:none"></textarea>
         <span class="note-saving" id="note-saving"></span>
         <button class="note-edit-btn" id="note-edit-btn" onclick="toggleNoteEdit()">Edit</button>
       </div>
       <div class="last-events-row">
-        <span>Last Pumped: <strong id="last-pumped-time">—</strong></span>
-        <span>Last Feeding: <strong id="last-feeding-time">—</strong></span>
+        <span>Last Feeding: <strong id="last-feeding-time">—</strong><span id="last-feeding-ago" class="feed-ago"></span></span>
       </div>
-    </div>
-
-    <div class="card" style="text-align:center">
-      <div class="baby-date-header" id="baby-date-header">—</div>
     </div>
 
     <div class="card">
       <div class="baby-btn-row">
         <button class="baby-action-btn" onclick="openFeedingModal()">🍼 Feeding</button>
-        <button class="baby-action-btn" id="d3-btn" onclick="toggleD3()">💊 D3</button>
-      </div>
-      <div class="baby-btn-row">
-        <div class="baby-action-col">
-          <button class="baby-action-btn" onclick="logQuick('pumped')">🥛 Pumped</button>
-          <div class="baby-ts-box" id="pumped-ts-box"><div class="empty-state" style="padding:0.25rem 0">—</div></div>
-        </div>
-        <div class="baby-action-col">
-          <button class="baby-action-btn" onclick="logQuick('tummy')">🧘 Tummy</button>
-          <div class="baby-ts-box" id="tummy-ts-box"><div class="empty-state" style="padding:0.25rem 0">—</div></div>
-        </div>
       </div>
     </div>
 
     <div class="card">
       <p class="section-label">Today's totals</p>
       <div class="ml-total-card"><div class="ml-fill" id="baby-ml-fill"></div><div class="ml-num" id="baby-ml-total">—</div><div class="ml-lbl">mL fed</div></div>
-      <div class="summary-grid" style="grid-template-columns:repeat(2,1fr)">
-        <div class="summary-cell"><div class="num" id="baby-breast-total">0 mL</div><div class="lbl">Breast</div></div>
-        <div class="summary-cell"><div class="num" id="baby-formula-total">0 mL</div><div class="lbl">Formula</div></div>
-      </div>
     </div>
 
     <div class="card">
@@ -310,7 +283,7 @@
       <button class="export-btn" onclick="toggleReviewPanel()">&#128197; View past 7 days</button>
       <div id="review-panel" style="display:none">
         <table class="review-table">
-          <thead><tr><th>Date</th><th>Breast</th><th>Formula</th><th>+/-</th><th>D3</th><th>Pumped</th><th>Tummy</th></tr></thead>
+          <thead><tr><th>Date</th><th>Total</th><th>+/-</th></tr></thead>
           <tbody id="review-table-body"></tbody>
         </table>
       </div>
@@ -323,11 +296,11 @@
     <div class="card">
       <p class="section-label">New reading</p>
       <div class="bp-inputs">
-        <div class="bp-field"><label>Sys</label><input type="number" id="bp-sys" placeholder="120"></div>
-        <div class="bp-field"><label>Dia</label><input type="number" id="bp-dia" placeholder="80"></div>
+        <div class="bp-field"><label for="bp-sys">Sys</label><input type="number" id="bp-sys" inputmode="numeric" placeholder="120"></div>
+        <div class="bp-field"><label for="bp-dia">Dia</label><input type="number" id="bp-dia" inputmode="numeric" placeholder="80"></div>
       </div>
       <button class="log-btn" id="bp-btn" onclick="logBP()">+ Log reading</button>
-      <button class="export-btn" onclick="exportBPCSV()">&#8659; Download BP log CSV</button>
+      <button class="export-btn" id="bp-export-btn" onclick="exportBPCSV()">&#8659; Download BP log CSV</button>
     </div>
     <div class="card">
       <p class="section-label" style="margin-bottom:0.75rem">7-day trend</p>
@@ -341,7 +314,7 @@
           <button class="refresh-btn" onclick="loadBP()">&#8635;</button>
         </div>
       </div>
-      <div id="bp-body" class="entry-list"><div class="empty-state">Not connected</div></div>
+      <div id="bp-body" class="entry-list"><div class="empty-state">Loading…</div></div>
     </div>
   </div>
 
@@ -396,17 +369,17 @@
 
   <!-- ══ TRACKER TAB ══ -->
   <div class="panel" id="panel-tracker" style="padding:0">
-    <iframe id="tracker-frame"
+    <iframe id="tracker-frame" title="Tracker"
       data-src="https://ian-murtha.github.io/mmx-todo-tracker/?embed=1"
-      style="width:100%;height:calc(100dvh - 140px);border:0;border-radius:var(--r-sm);background:transparent">
+      style="width:100%;border:0;border-radius:var(--r-sm);background:transparent">
     </iframe>
   </div>
 
   <!-- ══ BUDGET TAB ══ -->
   <div class="panel" id="panel-budget" style="padding:0">
-    <iframe id="budget-frame"
+    <iframe id="budget-frame" title="Budget"
       data-src="https://docs.google.com/spreadsheets/d/17sgZExlj1oS7cEhEncmK5Y5Fx5hj-dpI2mrWQswwgAY/edit"
-      style="width:100%;height:calc(100dvh - 140px);border:0;border-radius:var(--r-sm);background:var(--surface)">
+      style="width:100%;border:0;border-radius:var(--r-sm);background:var(--surface)">
     </iframe>
   </div>
 
@@ -469,13 +442,6 @@
   <div class="modal">
     <h3>Log Feeding</h3>
     <div class="modal-field"><label>Amount (mL)</label><input type="number" id="feeding-amt" placeholder="e.g. 60"></div>
-    <div class="modal-field">
-      <label>Type</label>
-      <div class="feed-slider" id="feed-slider" onclick="handleFeedSliderClick(event,'feed')">
-        <div class="feed-slider-track"><div class="feed-slider-thumb"></div></div>
-        <div class="feed-slider-labels"><span>Breast</span><span>Formula</span></div>
-      </div>
-    </div>
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeFeedingModal()">Cancel</button>
       <button class="modal-save"   onclick="submitFeeding()">Log</button>
@@ -483,19 +449,12 @@
   </div>
 </div>
 
-<!-- Entry edit modal (Feeding / Pumped / Tummy) -->
+<!-- Feeding edit modal -->
 <div class="modal-backdrop" id="entry2-edit-modal">
   <div class="modal">
-    <h3>Edit entry</h3>
+    <h3>Edit feeding</h3>
     <div class="modal-field"><label>Time</label><input type="time" id="entry2-edit-time"></div>
-    <div class="modal-field" id="entry2-edit-amt-wrap"><label>Amount (mL)</label><input type="number" id="entry2-edit-amt" placeholder="e.g. 60"></div>
-    <div class="modal-field" id="entry2-edit-type-wrap">
-      <label>Type</label>
-      <div class="feed-slider" id="entry2-edit-slider" onclick="handleFeedSliderClick(event,'edit')">
-        <div class="feed-slider-track"><div class="feed-slider-thumb"></div></div>
-        <div class="feed-slider-labels"><span>Breast</span><span>Formula</span></div>
-      </div>
-    </div>
+    <div class="modal-field"><label>Amount (mL)</label><input type="number" id="entry2-edit-amt" placeholder="e.g. 60"></div>
     <div class="modal-actions">
       <button class="modal-cancel" onclick="deleteEntry2FromModal()">Delete</button>
       <button class="modal-save"   onclick="saveEntry2Edit()">Save changes</button>
@@ -520,7 +479,7 @@
 
 <script>
 // ── Config ───────────────────────────────────────────────────
-const APP_VERSION    = 'v3.13';   // keep in step with CACHE in sw.js; shown in Settings and compared by the update check
+const APP_VERSION    = 'v3.14';   // keep in step with CACHE in sw.js; shown in Settings and compared by the update check
 const SB_URL         = 'https://bwazurshtrpqzatmkdkj.supabase.co';
 const SB_KEY         = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3YXp1cnNodHJwcXphdG1rZGtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MjMwMTMsImV4cCI6MjA5NTQ5OTAxM30.GLp4TEQ8geyczhNXzH8ZX3QcnAq32GntTgitXWcagdY';
 const BUCKET         = 'media';
@@ -543,7 +502,7 @@ async function initAuth() {
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     const wasLoggedIn = !!authSession;
     authSession = session;
-    if (wasLoggedIn && !authSession) { resetProtectedFrames(); clearMediaState(); } // logged out: clear Tracker/Budget embeds and the gallery
+    if (wasLoggedIn && !authSession) { resetProtectedFrames(); clearMediaState(); clearBPState(); } // logged out: clear Tracker/Budget embeds and the gallery
     // If we just logged out while sitting on a now-inaccessible protected tab, jump away.
     if (wasLoggedIn && !authSession && PROTECTED_TABS.includes(activeTab)) {
       switchTab(tabOrder.find(n => !hiddenTabs.includes(n) && !PROTECTED_TABS.includes(n)) || 'baby');
@@ -588,24 +547,27 @@ function renderSettingsAuthState() {
 }
 
 // ── Baby tab v2 state ────────────────────────────────────────
-// Old mmx_baby table and its fields are left untouched — this tab now writes
-// to mmx_baby_log2 (feeding/pumped/tummy, midnight-to-midnight) and mmx_baby_d3
-// (one on/off flag per calendar day) instead.
+// Old mmx_baby table and its fields are left untouched — this tab writes feedings to
+// mmx_baby_log2 (midnight-to-midnight). Old pumped/tummy rows, mmx_baby_d3 and the old
+// feed_type values stay in the database, unused (v3.14).
 let babyLog2 = [];          // today's mmx_baby_log2 rows
-let d3Today = false;
-let feedType = 'breast';    // feeding modal slider state
-let editFeedType = 'breast'; // entry2 edit modal slider state
 let editingEntry2 = null;    // row currently open in entry2-edit-modal
 const DEFAULT_ML_GOAL = 720;  // used for any day with no logged goal
 const BABY_NAME  = 'Isla';
 const BIRTH_DATE = new Date('2026-05-20T00:00:00');
+const FEED_WARN_HOURS = 2;    // Last Feeding timer turns amber once this many hours have passed
 let mlGoal = DEFAULT_ML_GOAL; // shared daily feeding goal, loaded from mmx_baby_goal
 let lastSeenDate = '';       // detects the calendar day changing while the app stays open
 let logBusy = false;         // guards double-taps on the logging buttons
 let noteSaveTimer = null, noteEditing = false;
+let lastFeedingTs = null;    // ts string of the most recent feeding (any day), or null
 
 // ── State ─────────────────────────────────────────────────────
-let allBP = [], chartBP = null;
+let allBP = [], chartBP = null, bpReqId = 0;
+const BP_SYS_MIN = 50, BP_SYS_MAX = 300, BP_DIA_MIN = 30, BP_DIA_MAX = 200;   // whole numbers only
+const BP_VIEW_LIMIT = 200;    // most readings the 7-day list loads; a full page shows as "200+"
+const BP_EXPORT_PAGE = 1000;  // rows per request when exporting the CSV
+let bpExporting = false;
 
 // ── Helpers ──────────────────────────────────────────────────
 const getEl = id => document.getElementById(id);
@@ -851,12 +813,13 @@ async function storageFetch(path, options={}) {
 function todayDateStr() { return dateStr(); }
 function todayStartTs() { return todayDateStr() + ' 00:00:00'; }
 
+const WEEKDAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 function formatDateHeader() {
   const d = new Date();
   const day = d.getDate();
   const suffix = (day%10===1&&day!==11) ? 'st' : (day%10===2&&day!==12) ? 'nd' : (day%10===3&&day!==13) ? 'rd' : 'th';
-  return `${MONTH_NAMES[d.getMonth()]} ${day}${suffix}`;
+  return `${WEEKDAY_NAMES[d.getDay()]}, ${MONTH_NAMES[d.getMonth()]} ${day}${suffix}`;
 }
 
 // ── Shared note ──────────────────────────────────────────────
@@ -909,7 +872,7 @@ async function saveNote(text) {
   } catch (err) { getEl('note-saving').textContent = ''; }
 }
 
-// ── Last Pumped / Last Feeding (not reset at midnight) ──
+// ── Last Feeding with elapsed timer (not reset at midnight) ──
 function formatLastEventTime(tsStr) {
   const datePart = tsStr.slice(0,10);
   const timeLabel = fmt12time(tsStr);
@@ -921,14 +884,35 @@ function formatLastEventTime(tsStr) {
   return `${parseInt(m)}/${parseInt(d)} ${timeLabel}`;
 }
 
+// Elapsed ms since a local-time 'YYYY-MM-DD HH:MM:SS' string, built from its local parts
+// (never toISOString/Date.parse of the string, which would read it as UTC). Never negative.
+function elapsedSinceTs(ts) {
+  const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/.exec(ts || '');
+  if (!m) return null;
+  const then = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
+  return Math.max(0, Date.now() - then.getTime());
+}
+function formatElapsed(ms) {
+  const mins = Math.floor(ms / 60000);
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return (h > 0 ? `${h}h ${m}m` : `${m}m`) + ' ago';
+}
+
+// Redraws the Last Feeding row (time + running timer). Cheap; called after each load and every minute.
+function renderLastFeeding() {
+  const timeEl = getEl('last-feeding-time'), agoEl = getEl('last-feeding-ago');
+  const ms = lastFeedingTs ? elapsedSinceTs(lastFeedingTs) : null;
+  if (ms === null) { timeEl.textContent = '—'; agoEl.textContent = ''; agoEl.classList.remove('warn'); return; }
+  timeEl.textContent = formatLastEventTime(lastFeedingTs);
+  agoEl.textContent = ' · ' + formatElapsed(ms);
+  agoEl.classList.toggle('warn', ms >= FEED_WARN_HOURS * 3600000);
+}
+
 async function loadLastEvents() {
   try {
-    const [feedRows, pumpRows] = await Promise.all([
-      sbFetch('mmx_baby_log2?kind=eq.feeding&order=ts.desc&limit=1'),
-      sbFetch('mmx_baby_log2?kind=eq.pumped&order=ts.desc&limit=1')
-    ]);
-    getEl('last-feeding-time').textContent = (feedRows && feedRows.length) ? formatLastEventTime(feedRows[0].ts) : '—';
-    getEl('last-pumped-time').textContent  = (pumpRows && pumpRows.length) ? formatLastEventTime(pumpRows[0].ts) : '—';
+    const feedRows = await sbFetch('mmx_baby_log2?kind=eq.feeding&order=ts.desc,id.desc&limit=1');
+    lastFeedingTs = (feedRows && feedRows.length) ? feedRows[0].ts : null;
+    renderLastFeeding();
   } catch (err) { console.error('loadLastEvents failed:', err); }
 }
 
@@ -960,20 +944,15 @@ async function upsertByDate(table, date, fields) {
   }
 }
 
-// Groups log rows by calendar day with per-day totals/counts. Breast is the default
-// feed type, matching the app-wide Breast/Formula convention.
+// Groups feeding rows by calendar day with a per-day total (mL).
 function bucketByDate(rows) {
   const byDate = {};
   (rows||[]).forEach(r => {
+    if (r.kind !== 'feeding') return;
     const d = r.ts.slice(0,10);
-    const day = byDate[d] || (byDate[d] = { feedings:[], breast:0, formula:0, pumped:0, tummy:0 });
-    if (r.kind === 'feeding') {
-      const amt = parseFloat(r.amount) || 0;
-      day.feedings.push(r);
-      if (r.feed_type === 'formula') day.formula += amt; else day.breast += amt;
-    }
-    else if (r.kind === 'pumped') day.pumped++;
-    else if (r.kind === 'tummy') day.tummy++;
+    const day = byDate[d] || (byDate[d] = { feedings:[], total:0 });
+    day.feedings.push(r);
+    day.total += parseFloat(r.amount) || 0;
   });
   return byDate;
 }
@@ -1004,7 +983,6 @@ function checkDayRollover() {
   if (lastSeenDate && lastSeenDate !== today) {
     lastSeenDate = today;
     updateBabyHeader();
-    loadD3();
     loadMlGoal(); // also logs the new day's goal
     loadBabyLog2();
   }
@@ -1021,11 +999,9 @@ async function guarded(fn) {
 async function loadBabyLog2() {
   try {
     const since = todayStartTs();
-    const rows  = await sbFetch(`mmx_baby_log2?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=500`);
+    const rows  = await sbFetch(`mmx_baby_log2?kind=eq.feeding&order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=500`);
     babyLog2 = rows || [];
     renderFeedingLog();
-    renderQuickList('pumped');
-    renderQuickList('tummy');
     renderBabyTotals();
     loadLastEvents(); // fire-and-forget — not scoped to today, doesn't block the main render
   } catch (err) {
@@ -1034,86 +1010,22 @@ async function loadBabyLog2() {
   }
 }
 
-async function loadD3() {
-  try {
-    const date = todayDateStr();
-    const rows = await sbFetch(`mmx_baby_d3?date=eq.${date}&limit=1`);
-    d3Today = !!(rows && rows.length && rows[0].d3);
-    getEl('d3-btn').classList.toggle('on', d3Today);
-  } catch (err) { console.error('loadD3 failed:', err); }
-}
-
-async function setD3(val) {
-  await upsertByDate('mmx_baby_d3', todayDateStr(), { d3:val });
-  d3Today = val;
-  getEl('d3-btn').classList.toggle('on', d3Today);
-  vibrate();
-}
-
-// One tap toggles; the toast offers Undo for a few seconds instead of a confirm popup.
-async function toggleD3() {
-  await guarded(async () => {
-    const prev = d3Today, next = !prev;
-    try {
-      await setD3(next);
-      showToast(next ? 'D3 marked as given' : 'D3 unmarked', {
-        label: 'Undo',
-        fn: () => guarded(async () => {
-          try { await setD3(prev); showToast('Undone'); }
-          catch (err) { showToast('Could not undo D3'); }
-        })
-      });
-    } catch (err) { showToast('Could not update D3'); }
-  });
-}
-
 // ── Feeding modal ──
 function openFeedingModal() {
   getEl('feeding-amt').value = '';
-  feedType = 'breast';
-  getEl('feed-slider').classList.remove('formula');
   getEl('feeding-modal').classList.add('open');
 }
 function closeFeedingModal() { getEl('feeding-modal').classList.remove('open'); }
-
-// Shared handler for both feeding-modal and entry2-edit-modal sliders — a
-// two-position segmented control (click either half) rather than a draggable
-// thumb, which is simpler and just as functional for a binary choice.
-function handleFeedSliderClick(e, which) {
-  const el = getEl(which === 'feed' ? 'feed-slider' : 'entry2-edit-slider');
-  const rect = el.getBoundingClientRect();
-  const type = (e.clientX - rect.left) > rect.width / 2 ? 'formula' : 'breast';
-  if (which === 'feed') feedType = type; else editFeedType = type;
-  el.classList.toggle('formula', type === 'formula');
-}
 
 async function submitFeeding() {
   const amt = parseFloat(getEl('feeding-amt').value);
   if (isNaN(amt) || amt <= 0) { showToast('Enter a valid amount'); return; }
   await guarded(async () => {
     try {
-      await sbFetch('mmx_baby_log2', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ts:nowTs(), kind:'feeding', amount:amt, feed_type:feedType }) });
+      await sbFetch('mmx_baby_log2', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ts:nowTs(), kind:'feeding', amount:amt }) });
       vibrate(); closeFeedingModal(); await loadBabyLog2(); showToast('Feeding logged');
     } catch (err) { showToast('Error: '+err.message); }
   });
-}
-
-// ── Pumped / Tummy quick log ──
-async function logQuick(kind) {
-  await guarded(async () => {
-    try {
-      await sbFetch('mmx_baby_log2', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ts:nowTs(), kind }) });
-      vibrate(); await loadBabyLog2(); showToast(kind==='pumped' ? 'Pumped logged' : 'Tummy time logged');
-    } catch (err) { showToast('Error: '+err.message); }
-  });
-}
-
-function renderQuickList(kind) {
-  const box = getEl(kind+'-ts-box');
-  const entries = babyLog2.filter(r => r.kind===kind).slice().sort((a,b) => a.ts < b.ts ? 1 : -1);
-  if (!entries.length) { box.innerHTML = '<div class="empty-state" style="padding:0.25rem 0">—</div>'; return; }
-  // NOTE: row.id is a DB-generated bigint — safe to interpolate directly into onclick.
-  box.innerHTML = entries.map(r => `<div class="ts-entry" onclick="openEntry2Edit(${r.id})">${fmt12time(r.ts)}</div>`).join('');
 }
 
 function renderFeedingLog() {
@@ -1123,7 +1035,7 @@ function renderFeedingLog() {
     <div class="entry-row">
       <div class="entry-line1">
         <span class="entry-time">${fmt12time(row.ts)}</span>
-        <span class="entry-notes">${row.feed_type === 'formula' ? 'Formula' : 'Breast'}</span>
+        <span class="entry-notes"></span>
         <div class="entry-actions">
           <button class="act-btn edit" onclick="openEntry2Edit(${row.id})">edit</button>
           <button class="act-btn del"  onclick="deleteEntry2(${row.id})">✕</button>
@@ -1138,11 +1050,7 @@ function renderFeedingLog() {
 function renderBabyTotals() {
   const feedings = babyLog2.filter(r => r.kind==='feeding');
   const mlTotal      = feedings.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
-  const breastTotal  = feedings.filter(r => r.feed_type==='breast').reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
-  const formulaTotal = feedings.filter(r => r.feed_type==='formula').reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
   getEl('baby-ml-total').textContent = `${Math.round(mlTotal)} / ${mlGoal}ml`;
-  getEl('baby-breast-total').textContent  = Math.round(breastTotal)+' mL';
-  getEl('baby-formula-total').textContent = Math.round(formulaTotal)+' mL';
   const pct = mlGoal > 0 ? Math.min(100, (mlTotal / mlGoal) * 100) : 0;
   getEl('baby-ml-fill').style.width = pct + '%';
 }
@@ -1197,19 +1105,12 @@ async function saveMlGoal() {
   finally { goalSaving = false; getEl('ml-goal-save').disabled = false; }
 }
 
-// ── Edit / delete (Feeding, Pumped, Tummy share one modal) ──
+// ── Edit / delete a feeding ──
 function openEntry2Edit(id) {
   const row = babyLog2.find(r => r.id===id); if (!row) return;
   editingEntry2 = row;
   getEl('entry2-edit-time').value = row.ts.slice(11,16); // 'YYYY-MM-DD HH:MM:SS' -> 'HH:MM'
-  const isFeeding = row.kind === 'feeding';
-  getEl('entry2-edit-amt-wrap').style.display  = isFeeding ? 'block' : 'none';
-  getEl('entry2-edit-type-wrap').style.display = isFeeding ? 'block' : 'none';
-  if (isFeeding) {
-    getEl('entry2-edit-amt').value = row.amount || '';
-    editFeedType = row.feed_type === 'formula' ? 'formula' : 'breast';
-    getEl('entry2-edit-slider').classList.toggle('formula', editFeedType==='formula');
-  }
+  getEl('entry2-edit-amt').value = row.amount || '';
   getEl('entry2-edit-modal').classList.add('open');
 }
 function closeEntry2Edit() { getEl('entry2-edit-modal').classList.remove('open'); editingEntry2 = null; }
@@ -1221,13 +1122,9 @@ async function saveEntry2Edit() {
   const datePart = editingEntry2.ts.slice(0,10);
   const timeVal  = getEl('entry2-edit-time').value; // 'HH:MM'
   if (!/^\d{2}:\d{2}$/.test(timeVal)) { showToast('Enter a valid time'); return; }
-  const payload  = { ts: `${datePart} ${timeVal}:00` };
-  if (editingEntry2.kind === 'feeding') {
-    const amt = parseFloat(getEl('entry2-edit-amt').value);
-    if (isNaN(amt) || amt <= 0) { showToast('Enter a valid amount'); return; }
-    payload.amount = amt;
-    payload.feed_type = editFeedType;
-  }
+  const amt = parseFloat(getEl('entry2-edit-amt').value);
+  if (isNaN(amt) || amt <= 0) { showToast('Enter a valid amount'); return; }
+  const payload  = { ts: `${datePart} ${timeVal}:00`, amount: amt };
   try {
     await sbFetch(`mmx_baby_log2?id=eq.${editingEntry2.id}`, { method:'PATCH', prefer:'return=minimal', body:JSON.stringify(payload) });
     closeEntry2Edit(); await loadBabyLog2(); showToast('Entry updated');
@@ -1235,7 +1132,7 @@ async function saveEntry2Edit() {
 }
 
 async function deleteEntry2(id) {
-  if (!confirm('Delete this entry?')) return;
+  if (!confirm('Delete this feeding?')) return;
   try {
     await sbFetch(`mmx_baby_log2?id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' });
     await loadBabyLog2(); showToast('Entry deleted');
@@ -1250,36 +1147,81 @@ function deleteEntry2FromModal() {
 }
 
 // ── BP ────────────────────────────────────────────────────────
+// Whole number within [min, max], or { err } with a plain message naming the field and range.
+function parseBPField(raw, label, min, max) {
+  const t = String(raw ?? '').trim();
+  if (!t) return { err: `Enter ${label} (${min}–${max})` };
+  if (!/^\d+$/.test(t)) return { err: `${label} must be a whole number (${min}–${max})` };
+  const n = Number(t);
+  if (n < min || n > max) return { err: `${label} must be ${min}–${max}` };
+  return { n };
+}
+
+// Turns a failed save into plain words (sbFetch throws the raw server text; it is shared, so not changed).
+function bpSaveError(err) {
+  const msg = String((err && err.message) || '');
+  if (/jwt|expired|\b401\b|not authenticated|invalid claim/i.test(msg)) return "Couldn't save. Log in again from Settings.";
+  return "Couldn't save. Try again.";
+}
+
 async function logBP() {
-  const sys=parseInt(getEl('bp-sys').value), dia=parseInt(getEl('bp-dia').value);
-  if (!sys||!dia) { showToast('Enter both Sys and Dia'); return; }
-  const btn=getEl('bp-btn'); btn.disabled=true;
+  const btn = getEl('bp-btn');
+  if (btn.disabled) return;   // a save is already in flight (double-tap / Enter + tap)
+  const sysR = parseBPField(getEl('bp-sys').value, 'Sys', BP_SYS_MIN, BP_SYS_MAX);
+  if (sysR.err) { showToast(sysR.err); return; }
+  const diaR = parseBPField(getEl('bp-dia').value, 'Dia', BP_DIA_MIN, BP_DIA_MAX);
+  if (diaR.err) { showToast(diaR.err); return; }
+  const sys = sysR.n, dia = diaR.n;
+  if (dia >= sys) { showToast('Dia must be lower than Sys'); return; }
+  btn.disabled = true;
   try {
-    await sbFetch('mmx_bp?select=id', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ts:nowTs(), sys, dia }) });
+    await sbFetch('mmx_bp', { method:'POST', prefer:'return=minimal', body:JSON.stringify({ ts:nowTs(), sys, dia }) });
     vibrate(); getEl('bp-sys').value=''; getEl('bp-dia').value='';
     await loadBP(); showToast('BP reading logged');
-  } catch (err) { showToast('Error: '+err.message); }
+  } catch (err) { console.error('logBP failed:', err); showToast(bpSaveError(err)); }
   finally { btn.disabled=false; }
 }
 
+// Only the newest request may draw: a slower, older response is dropped.
 async function loadBP() {
+  const mine = ++bpReqId;
   try {
     const since = sevenDayCutoff();
-    const rows  = await sbFetch(`mmx_bp?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=200`);
-    allBP = rows||[]; renderBP(allBP); buildBPChart(allBP);
-  } catch (err) { console.error('loadBP failed:', err); getEl('bp-body').innerHTML='<div class="empty-state">Could not load</div>'; }
+    const rows  = await sbFetch(`mmx_bp?order=ts.desc&ts=gte.${encodeURIComponent(since)}&limit=${BP_VIEW_LIMIT}`);
+    if (mine !== bpReqId) return;
+    allBP = rows||[]; renderBP(allBP); drawBPChart(allBP);
+  } catch (err) {
+    if (mine !== bpReqId) return;
+    console.error('loadBP failed:', err); getEl('bp-body').innerHTML='<div class="empty-state">Could not load</div>';
+  }
+}
+
+// The chart is a nice-to-have: an error here (or Chart.js not loaded) must never undo a good list.
+function drawBPChart(rows) {
+  try { if (typeof Chart === 'undefined') return; buildBPChart(rows); }
+  catch (err) { console.error('BP chart failed:', err); }
+}
+
+// Logout: forget readings, chart and any load still in flight.
+function clearBPState() {
+  bpReqId++;
+  allBP = [];
+  if (chartBP) { try { chartBP.destroy(); } catch (e) {} chartBP = null; }
+  getEl('bp-body').innerHTML = '<div class="empty-state">Loading…</div>';
+  getEl('bp-count').textContent = '—';
 }
 
 function renderBP(rows) {
-  getEl('bp-count').textContent = rows.length+(rows.length===1?' reading':' readings');
+  const n = rows.length;
+  getEl('bp-count').textContent = (n >= BP_VIEW_LIMIT ? BP_VIEW_LIMIT + '+' : n) + (n === 1 ? ' reading' : ' readings');
   if (!rows.length) { getEl('bp-body').innerHTML='<div class="empty-state">No readings in the past 7 days</div>'; return; }
-  // NOTE: row.id is a DB-generated bigint — safe to interpolate directly into onclick.
+  // Values are escaped; the id is forced numeric because it goes into an onclick.
   // Do not interpolate free-text row values into onclick attributes; use data-attributes + delegated listeners instead.
   getEl('bp-body').innerHTML = rows.map(row => `
     <div class="bp-reading">
-      <span class="bp-time">${fmt12full(row.ts)}</span>
-      <span class="bp-values">${row.sys}/${row.dia}<span>mmHg</span></span>
-      <button class="bp-del" onclick="deleteBP(${row.id})">✕</button>
+      <span class="bp-time">${escapeHtml(fmt12full(row.ts))}</span>
+      <span class="bp-values">${escapeHtml(row.sys)}/${escapeHtml(row.dia)}<span>mmHg</span></span>
+      <button class="bp-del" aria-label="Delete reading" onclick="deleteBP(${Number(row.id)})">✕</button>
     </div>`).join('');
 }
 
@@ -1295,10 +1237,10 @@ function buildBPChart(rows) {
       { label:'Dia', data:rev.map(r=>r.dia), borderColor:'#a8d8f0', backgroundColor:'rgba(168,216,240,0.1)', tension:0.3, pointRadius:3 },
     ]},
     options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{ labels:{ color:'#7a7f8e', font:{ family:'DM Mono', size:11 }, boxWidth:10, padding:10 } } },
+      plugins:{ legend:{ labels:{ color:'#8d92a1', font:{ family:'DM Mono', size:11 }, boxWidth:10, padding:10 } } },
       scales:{
-        x:{ ticks:{ color:'#7a7f8e', font:{ family:'DM Mono', size:10 }, maxRotation:45 }, grid:{ color:'rgba(255,255,255,0.05)' } },
-        y:{ ticks:{ color:'#7a7f8e', font:{ family:'DM Mono', size:11 } }, grid:{ color:'rgba(255,255,255,0.05)' }, beginAtZero:false }
+        x:{ ticks:{ color:'#8d92a1', font:{ family:'DM Mono', size:10 }, maxRotation:45 }, grid:{ color:'rgba(255,255,255,0.05)' } },
+        y:{ ticks:{ color:'#8d92a1', font:{ family:'DM Mono', size:11 } }, grid:{ color:'rgba(255,255,255,0.05)' }, beginAtZero:false }
       }
     }
   });
@@ -1308,7 +1250,8 @@ async function deleteBP(id) {
   if (!confirm('Delete this reading?')) return;
   try {
     await sbFetch(`mmx_bp?id=eq.${id}`, { method:'DELETE', prefer:'return=minimal' });
-    allBP=allBP.filter(r=>r.id!==id); renderBP(allBP); buildBPChart(allBP); showToast('Reading deleted');
+    bpReqId++;   // a load started before this delete must not bring the row back
+    allBP=allBP.filter(r=>r.id!==id); renderBP(allBP); drawBPChart(allBP); showToast('Reading deleted');
   } catch (err) { showToast('Delete failed'); }
 }
 // ── Media ─────────────────────────────────────────────────────
@@ -2057,10 +2000,6 @@ async function exportBabyXlsx() {
     const HEADER_ALIGN = { horizontal:'center', vertical:'center' };
     const BODY_FONT = { name:'Arial', sz:11 };
     const THIN_BOTTOM_BORDER = { bottom:{ style:'thin', color:{ rgb:'D0D0D0' } } };
-    const TYPE_FILLS = {
-      Breast:  { patternType:'solid', fgColor:{ rgb:'D6E4F0' } },
-      Formula: { patternType:'solid', fgColor:{ rgb:'FDE9D9' } }
-    };
     const headerCell = v => ({ v, t:'s', s:{ font:HEADER_FONT, fill:HEADER_FILL, alignment:HEADER_ALIGN } });
     const bodyCell = (v, fill, align) => ({
       v, t: typeof v === 'number' ? 'n' : 's',
@@ -2068,36 +2007,30 @@ async function exportBabyXlsx() {
     });
 
     // ── Sheet 1: Feeding Log ──
-    const feedRows = [[headerCell('Date'), headerCell('Time'), headerCell('Amount (mL)'), headerCell('Type')]];
+    const feedRows = [[headerCell('Date'), headerCell('Time'), headerCell('Amount (mL)')]];
     dates.forEach(d => {
       byDate[d].feedings.forEach(r => {
-        const typeLabel = r.feed_type === 'formula' ? 'Formula' : 'Breast';
-        const fill = TYPE_FILLS[typeLabel];
         feedRows.push([
-          bodyCell(d, fill, 'left'),
-          bodyCell(fmt12time(r.ts), fill, 'left'),
-          bodyCell(r.amount ? Math.round(parseFloat(r.amount)) : 0, fill, 'center'),
-          bodyCell(typeLabel, fill, 'center')
+          bodyCell(d, null, 'left'),
+          bodyCell(fmt12time(r.ts), null, 'left'),
+          bodyCell(r.amount ? Math.round(parseFloat(r.amount)) : 0, null, 'center')
         ]);
       });
     });
     const ws1 = XLSX.utils.aoa_to_sheet(feedRows);
-    ws1['!cols'] = [{ wch:12 }, { wch:10 }, { wch:14 }, { wch:12 }];
+    ws1['!cols'] = [{ wch:12 }, { wch:10 }, { wch:14 }];
 
     // ── Sheet 2: Daily Summary ──
-    const summaryRows = [[headerCell('Day'), headerCell('Total Breast'), headerCell('Total Formula'), headerCell('Day Total'), headerCell('Daily Goal (mL)')]];
+    const summaryRows = [[headerCell('Day'), headerCell('Day Total'), headerCell('Daily Goal (mL)')]];
     dates.forEach(d => {
-      const { breast, formula } = byDate[d];
       summaryRows.push([
         bodyCell(d, null, 'left'),
-        bodyCell(Math.round(breast), null, 'center'),
-        bodyCell(Math.round(formula), null, 'center'),
-        { v: Math.round(breast + formula), t:'n', s: { font:{ name:'Arial', sz:11, bold:true }, border:THIN_BOTTOM_BORDER, alignment:{ horizontal:'center' } } },
+        { v: Math.round(byDate[d].total), t:'n', s: { font:{ name:'Arial', sz:11, bold:true }, border:THIN_BOTTOM_BORDER, alignment:{ horizontal:'center' } } },
         bodyCell(goalForDate(d), null, 'center')
       ]);
     });
     const ws2 = XLSX.utils.aoa_to_sheet(summaryRows);
-    ws2['!cols'] = [{ wch:12 }, { wch:13 }, { wch:14 }, { wch:12 }, { wch:16 }];
+    ws2['!cols'] = [{ wch:12 }, { wch:12 }, { wch:16 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws1, 'Feeding Log');
@@ -2127,19 +2060,16 @@ function sevenDayStartTs() {
 
 async function loadReviewData() {
   const tbody = getEl('review-table-body');
-  tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">Loading…</td></tr>';
   try {
     const since = sevenDayStartTs();
     const sinceDate = since.slice(0,10);
-    const [logRows, d3Rows, goalForDate] = await Promise.all([
-      fetchAll(`mmx_baby_log2?ts=gte.${encodeURIComponent(since)}&order=ts.desc,id.desc`),
-      sbFetch(`mmx_baby_d3?date=gte.${sinceDate}&order=date.desc`),
+    const [logRows, goalForDate] = await Promise.all([
+      fetchAll(`mmx_baby_log2?kind=eq.feeding&ts=gte.${encodeURIComponent(since)}&order=ts.desc,id.desc`),
       loadGoalMap(sinceDate)
     ]);
 
     const byDate = bucketByDate(logRows);
-    const d3ByDate = {};
-    (d3Rows||[]).forEach(r => { d3ByDate[r.date] = !!r.d3; });
 
     // Build the 7 date strings, today first
     const dates = [];
@@ -2148,38 +2078,44 @@ async function loadReviewData() {
       dates.push(dateStr(d));
     }
 
-    tbody.innerHTML = dates.map(dateStr => {
-      const day = byDate[dateStr] || { breast:0, formula:0, pumped:0, tummy:0 };
-      const d3  = !!d3ByDate[dateStr];
-      const diff = Math.round(day.breast + day.formula - goalForDate(dateStr));
+    tbody.innerHTML = dates.map(dayStr => {
+      const total = Math.round((byDate[dayStr] || { total:0 }).total);
+      const diff = total - goalForDate(dayStr);
       const diffClass = diff < 0 ? 'diff-neg' : 'diff-pos';
       const diffLabel = diff > 0 ? `+${diff}` : `${diff}`;
-      const [, m, dd] = dateStr.split('-');
-      const label = `${m}/${dd}`;
+      const [, m, dd] = dayStr.split('-');
       return `<tr>
-        <td>${label}</td>
-        <td>${Math.round(day.breast)}</td>
-        <td>${Math.round(day.formula)}</td>
+        <td>${m}/${dd}</td>
+        <td>${total}</td>
         <td class="${diffClass}">${diffLabel}</td>
-        <td class="${d3?'d3-yes':'d3-no'}">${d3?'Yes':'No'}</td>
-        <td>${day.pumped}</td>
-        <td>${day.tummy}</td>
       </tr>`;
     }).join('');
   } catch (err) {
     console.error('loadReviewData failed:', err);
-    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">Could not load</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">Could not load</td></tr>';
   }
 }
 
 async function exportBPCSV() {
-  const rows = await sbFetch('mmx_bp?order=ts.desc&limit=5000');
-  if (!rows||!rows.length) { showToast('No BP entries'); return; }
-  downloadCSV([['Timestamp','Sys','Dia'],...rows.map(r=>[r.ts,r.sys,r.dia])], 'bp_log_'+new Date().toISOString().slice(0,10)+'.csv');
+  if (bpExporting) return;
+  bpExporting = true;
+  const btn = getEl('bp-export-btn'); btn.disabled = true;
+  try {
+    const rows = await fetchAll('mmx_bp?order=ts.desc,id.desc', BP_EXPORT_PAGE);
+    if (!rows.length) { showToast('No BP entries'); return; }
+    downloadCSV([['Timestamp','Sys','Dia'],...rows.map(r=>[r.ts,r.sys,r.dia])], 'bp_log_'+dateStr()+'.csv');
+  } catch (err) {
+    console.error('exportBPCSV failed:', err);
+    showToast('Export failed. Try again.');
+  } finally { bpExporting = false; btn.disabled = false; }
 }
 function downloadCSV(lines, filename) {
-  const csv = lines.map(l=>l.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a   = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download=filename; a.click();
+  const csv  = lines.map(l=>l.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const url  = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.style.display = 'none';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);   // not immediately: some browsers need a moment to start the download
 }
 
 function computeAgeLabel() {
@@ -2251,6 +2187,8 @@ async function init() {
   bindEnterKey('login-password', doLogin);
   bindEnterKey('wx-zip-input', saveWxLocation);
   bindEnterKey('ml-goal-input', saveMlGoal);
+  bindEnterKey('bp-sys', logBP);
+  bindEnterKey('bp-dia', logBP);
   await initAuth();
   lastSeenDate = todayDateStr();
   updateBabyHeader();
@@ -2273,12 +2211,13 @@ function refreshBaby() {
   checkDayRollover();
   fetchMlGoal();
   loadBabyLog2();
-  loadD3();
   loadNote();
 }
 // Poll only while the app is visible AND the Baby tab is showing. Switching back to the tab
 // (LOAD_FNS.baby) or returning to the app refreshes immediately, so nothing looks stale.
 setInterval(() => { if (!document.hidden && activeTab === 'baby') refreshBaby(); }, 30000);
+// Last Feeding timer: recompute every minute while the Baby tab is showing (also redrawn on each reload above).
+setInterval(() => { if (!document.hidden && activeTab === 'baby') renderLastFeeding(); }, 60000);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
   if (activeTab === 'baby') refreshBaby(); else checkDayRollover();
